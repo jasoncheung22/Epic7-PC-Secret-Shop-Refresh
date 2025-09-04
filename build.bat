@@ -1,0 +1,1 @@
+pyinstaller --onefile --icon="icon.ico" --noconsole window_capture_bot.py
