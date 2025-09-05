@@ -12,12 +12,13 @@ import win32api
 from ctypes import windll
 import os
 import json
-
+import csv
+from datetime import datetime
 
 class WindowCaptureBot:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("E7 PC FULL AUTO v2.3")
+        self.root.title("E7 PC FULL AUTO v2.4")
         self.root.geometry("1000x800")  # 增加高度以容納新功能
         
         # 狀態變數
@@ -26,6 +27,10 @@ class WindowCaptureBot:
         self.is_running = False
         self.capture_thread = None
         self.match_threshold = 0.8
+        
+        # ✅ 時間記錄變數
+        self.start_time = None
+        self.end_time = None
         
         # ✅ 自動次數相關變數
         self.auto_max_count = None  # 最大自動次數（None表示無限）
@@ -41,7 +46,7 @@ class WindowCaptureBot:
         }
         
         # 模板圖片相關
-        self.template_images = ["covenant.png", "mystic.png", "friend.png"]
+        self.template_images = ["covenant.png", "mystic.png", "friend.png", "text_11.png" , "text_01.png"]
         self.template_vars = []
         self.template_photoimgs = []
         self.loaded_templates = []
@@ -165,8 +170,11 @@ class WindowCaptureBot:
         status_frame.rowconfigure(0, weight=1)
     
     def setup_template_selection(self, parent_frame):
-        """設置模板圖片選擇UI"""
-        for i, img_name in enumerate(self.template_images):
+        """設置模板圖片選擇UI - 排除文字模板"""
+        # ✅ 只為前3個模板(covenant, mystic, friend)創建UI
+        display_templates = self.template_images[:3]  # 只顯示前3個
+        
+        for i, img_name in enumerate(display_templates):
             # 創建每個圖片的框架
             img_frame = ttk.Frame(parent_frame)
             img_frame.grid(row=i//3, column=i%3, padx=10, pady=5, sticky=(tk.W, tk.E))
@@ -186,17 +194,15 @@ class WindowCaptureBot:
                     
                 except Exception as e:
                     self.log_message(f"載入圖片 {img_name} 失敗: {e}")
-                    # 如果載入失敗，顯示佔位符
                     placeholder = ttk.Label(img_frame, text="圖片\n載入\n失敗", width=10)
                     placeholder.grid(row=0, column=0, padx=(0, 5))
                     self.template_photoimgs.append(None)
             else:
-                # 如果文件不存在，顯示佔位符
                 placeholder = ttk.Label(img_frame, text="圖片\n未找到", width=10)
                 placeholder.grid(row=0, column=0, padx=(0, 5))
                 self.template_photoimgs.append(None)
             
-            # ✅ 複選框 - friend.png 默認不勾選
+            # 複選框 - friend.png 默認不勾選
             default_value = True if img_name != "friend.png" else False
             var = tk.BooleanVar(value=default_value)
             checkbox = ttk.Checkbutton(img_frame, text=img_name.replace('.png', ''), variable=var)
@@ -204,7 +210,7 @@ class WindowCaptureBot:
             
             self.template_vars.append(var)
             self.ui_controls.append(checkbox)
-    
+
     def setup_statistics_display(self, parent_frame):
         """✅ 設置統計顯示UI"""
         # 第一行：天空石和金幣
@@ -296,18 +302,73 @@ class WindowCaptureBot:
                 control.config(state=state)
             except:
                 pass
+    
+    def write_summary_to_csv(self, duration_seconds):
+        """✅ 將自動化總結寫入CSV文件"""
+        try:
+            filename = "automation_summary.csv"
+            file_exists = os.path.isfile(filename)
+            
+            # CSV欄位定義
+            fieldnames = [
+                '開始時間', '結束時間', '使用時間(HH:MM:SS)',
+                '刷新次數', '天空石消耗', '聖約書籤獲得', '神秘書籤獲得',
+                '友情書籤獲得', '金幣消耗'
+            ]
+            
+            with open(filename, mode='a', newline='', encoding='utf-8-sig') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 
+                # 如果文件不存在，寫入標題行
+                if not file_exists:
+                    writer.writeheader()
+                
+                # 格式化時間
+                start_str = datetime.fromtimestamp(self.start_time).strftime('%Y-%m-%d %H:%M:%S')
+                end_str = datetime.fromtimestamp(self.end_time).strftime('%Y-%m-%d %H:%M:%S')
+                
+                # 格式化持續時間
+                hours = int(duration_seconds // 3600)
+                minutes = int((duration_seconds % 3600) // 60)
+                seconds = int(duration_seconds % 60)
+                duration_formatted = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+                
+                # 寫入數據行
+                row = {
+                    '開始時間': start_str,
+                    '結束時間': end_str,
+                    '使用時間(HH:MM:SS)': duration_formatted,
+                    '刷新次數': self.auto_current_count,
+                    '天空石消耗': self.stats['skystones_consumed'],
+                    '聖約書籤獲得': self.stats['covenant_bookmarks'],
+                    '神秘書籤獲得': self.stats['mystic_bookmarks'],
+                    '友情書籤獲得': self.stats['friendship_bookmarks'],
+                    '金幣消耗': self.stats['gold_consumed']
+                }
+                
+                writer.writerow(row)
+            
+            self.log_message(f"📊 自動化總結已匯出至 {filename}", color="green")
+            
+        except Exception as e:
+            self.log_message(f"匯出CSV時發生錯誤: {e}", color="red")
+
+    # 以下是其他原有方法，保持不變...
     def load_template_images(self):
-        """載入模板圖片到記憶體"""
+        """載入模板圖片到記憶體 - 包含文字模板"""
         self.loaded_templates = []
         for img_name in self.template_images:
             img_path = os.path.join("image", img_name)
             if os.path.exists(img_path):
                 try:
-                    template = cv2.imread(img_path, cv2.IMREAD_COLOR)
+                    # ✅ 直接載入為灰階圖片
+                    template = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
                     if template is not None:
                         self.loaded_templates.append(template)
-                        self.log_message(f"載入模板圖片: {img_name}")
+                        if img_name.startswith("text"):
+                            self.log_message(f"載入文字模板: {img_name}")
+                        else:
+                            self.log_message(f"載入模板圖片: {img_name}")
                     else:
                         self.loaded_templates.append(None)
                         self.log_message(f"載入模板圖片失敗: {img_name}")
@@ -317,7 +378,7 @@ class WindowCaptureBot:
             else:
                 self.loaded_templates.append(None)
                 self.log_message(f"模板圖片不存在: {img_path}")
-    
+
     def log_message(self, message, color="black"):
         """✅ 記錄訊息到狀態文本框（支援顏色）"""
         timestamp = time.strftime("%H:%M:%S")
@@ -396,7 +457,7 @@ class WindowCaptureBot:
             
             img = np.frombuffer(bmpstr, dtype='uint8')
             img.shape = (height, width, 4)
-            img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+            gimg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             
             # 清理資源
             win32gui.DeleteObject(saveBitMap.GetHandle())
@@ -404,7 +465,7 @@ class WindowCaptureBot:
             mfcDC.DeleteDC()
             win32gui.ReleaseDC(hwnd, hwndDC)
             if result == 1:
-                return img
+                return gimg
             else:
                 return None
         except Exception as e:
@@ -518,7 +579,7 @@ class WindowCaptureBot:
             return False
     
     def capture_loop(self):
-        """✅ 主要的自動化循環（加入次數限制和統計功能）"""
+        """主要的自動化循環 - 加入狀態判定"""
         # 調整視窗大小
         if not self.resize_target_window(self.target_hwnd):
             self.log_message("無法調整視窗大小，停止自動化")
@@ -526,7 +587,7 @@ class WindowCaptureBot:
             return
         
         self.log_message("自動化進行時滑鼠不要進入目標視窗，會影響點擊準確度!!!", color="red")
-        time.sleep(1)  # 等待視窗調整完成
+        time.sleep(1)
         
         while self.is_running:
             try:
@@ -561,139 +622,130 @@ class WindowCaptureBot:
                         match_x, match_y = match_loc
                         self.log_message(f"找到匹配圖片 {name} 於位置 ({match_x}, {match_y}), 信心度: {confidence:.3f}")
                         
-                        # ✅ 根據圖片類型添加統計和顏色日誌
-                        if name == "covenant.png":
-                            self.stats['covenant_bookmarks'] += 5
-                            self.stats['gold_consumed'] += 184000
-                            self.log_message("找到聖約書簽！", color="blue")
-                        elif name == "mystic.png":
-                            self.stats['mystic_bookmarks'] += 50
-                            self.stats['gold_consumed'] += 280000
-                            self.log_message("找到神秘書簽！", color="red")
-                        elif name == "friend.png":
-                            self.stats['friendship_bookmarks'] += 5
-                            self.stats['gold_consumed'] += 18000
-                            self.log_message("找到友情書簽！", color="green")
+                        # ✅ 檢查點擊狀態
+                        is_clickable, status = self.check_clickable_status(captured_image, match_x, match_y)
                         
-                        # 更新統計顯示
-                        self.update_statistics_display()
-                        
-                        # 點擊匹配位置
-                        click_x = match_x + 280
-                        click_y = match_y + 25
-                        time.sleep(1)
-                        self.click_at_position(self.target_hwnd, click_x, click_y)
-                        time.sleep(1)
-                        
-                        if not self.is_running:
-                            break
+                        if is_clickable:
+                            # 可以點擊 - 執行原本邏輯
+                            self.log_message(f"狀態檢查: {status} - 可以點擊", color="green")
                             
-                        # 點擊畫面中央確認
-                        self.click_at_position(self.target_hwnd, self.click_positions['center_confirm_x'], 
-                                             self.click_positions['center_confirm_y'])
-                        
-                        time.sleep(1)  # 等待一秒後繼續下一循環
-                        break
-                
-                if not self.is_running:
-                    break
-                
-                # 沒有找到，執行滑動
-                self.simulate_vertical_scroll(
-                    self.target_hwnd, 
-                    self.click_positions['scroll_x'], 
-                    self.click_positions['scroll_y'],
-                    self.click_positions['scroll_distance']
-                )
-                
-                time.sleep(2)  # 等待滑動完成
-                
-                # 滑動後再次捕獲和檢測
-                captured_image2 = self.capture_window(self.target_hwnd)
-                if captured_image2 is None:
-                    self.log_message("滑動後無法捕獲視窗畫面")
-                    time.sleep(1)
-                    continue
-                    
-                if not self.is_running:
-                    break
-                    
-                for template, name in zip(selected_templates, selected_names):
-                    match_loc, confidence = self.find_template_in_image(captured_image2, template)
-                    if match_loc is not None:
-                        match_x, match_y = match_loc
-                        self.log_message(f"滑動後找到匹配圖片 {name} 於位置 ({match_x}, {match_y}), 信心度: {confidence:.3f}")
-                        
-                        # ✅ 根據圖片類型添加統計和顏色日誌
-                        if name == "covenant.png":
-                            self.stats['covenant_bookmarks'] += 5
-                            self.stats['gold_consumed'] += 184000
-                            self.log_message("找到聖約書簽！", color="blue")
-                        elif name == "mystic.png":
-                            self.stats['mystic_bookmarks'] += 50
-                            self.stats['gold_consumed'] += 280000
-                            self.log_message("找到神秘書簽！", color="red")
-                        elif name == "friend.png":
-                            self.stats['friendship_bookmarks'] += 5
-                            self.stats['gold_consumed'] += 18000
-                            self.log_message("找到友情書簽！", color="green")
-                        
-                        # 更新統計顯示
-                        self.update_statistics_display()
-                        
-                        # 點擊匹配位置
-                        click_x = match_x + 280
-                        click_y = match_y + 25
-                        time.sleep(1)
-                        self.click_at_position(self.target_hwnd, click_x, click_y)
-                        time.sleep(1)
-                        
-                        if not self.is_running:
-                            break
+                            # 根據圖片類型添加統計和顏色日誌
+                            if name == "covenant.png":
+                                self.stats['covenant_bookmarks'] += 5
+                                self.stats['gold_consumed'] += 184000
+                                self.log_message("找到聖約書簽！", color="blue")
+                            elif name == "mystic.png":
+                                self.stats['mystic_bookmarks'] += 50
+                                self.stats['gold_consumed'] += 280000
+                                self.log_message("找到神秘書簽！", color="red")
+                            elif name == "friend.png":
+                                self.stats['friendship_bookmarks'] += 5
+                                self.stats['gold_consumed'] += 18000
+                                self.log_message("找到友情書簽！", color="green")
                             
-                        # 點擊畫面中央確認
-                        self.click_at_position(self.target_hwnd, self.click_positions['center_confirm_x'], 
+                            # 更新統計顯示
+                            self.update_statistics_display()
+                            
+                            # 點擊匹配位置
+                            click_x = match_x + 280
+                            click_y = match_y + 25
+                            time.sleep(1)
+                            self.click_at_position(self.target_hwnd, click_x, click_y)
+                            time.sleep(1)
+                            
+                            if not self.is_running:
+                                break
+                                
+                            # 點擊畫面中央確認
+                            self.click_at_position(self.target_hwnd, self.click_positions['center_confirm_x'], 
                                                 self.click_positions['center_confirm_y'])
-                        time.sleep(1)
-                        break
-                
-
-                self.auto_current_count += 1  # 增加刷新次數
-                # ✅ 檢查是否達到最大次數
-                if self.auto_max_count is not None and self.auto_current_count >= self.auto_max_count:
-                    self.log_message(f"✅ 已達到設定的最大次數 {self.auto_max_count}，自動停止", color="green")
-                    self.stop_capture()
-                    self.update_statistics_display()
-                    self.update_auto_count_display()  # 更新次數顯示
-                    break
-                
-                # 如果滑動後還沒找到，執行底部點擊流程
-                self.click_at_position(self.target_hwnd, self.click_positions['left_bottom_x'], 
-                                        self.click_positions['left_bottom_y'])
-                time.sleep(1)
+                            
+                            time.sleep(1)
+                            break
+                        else:
+                            # 不能點擊 - 記錄已購買
+                            self.log_message(f"狀態檢查: {status} - 已購買，跳過", color="orange")
+                            # 繼續檢查其他模板
+                            continue
                 
                 if not self.is_running:
                     break
-                    
-                self.click_at_position(self.target_hwnd, self.click_positions['next_confirm_x'], 
-                                        self.click_positions['next_confirm_y'])
                 
-                # ✅ 每次循環結束前增加天空石消耗和刷新次數
-                if self.is_running:
-                    self.stats['skystones_consumed'] += 3
-                    self.update_statistics_display()
-                    self.update_auto_count_display()  # 更新次數顯示
+                if not match_found:
+                    # 沒有找到可點擊的目標，執行滑動
+                    self.simulate_vertical_scroll(
+                        self.target_hwnd, 
+                        self.click_positions['scroll_x'], 
+                        self.click_positions['scroll_y'],
+                        self.click_positions['scroll_distance']
+                    )
                     
-                self.click_at_position(self.target_hwnd, self.click_positions['cancel_x'], 
-                        self.click_positions['cancel_y'], 2)
-                time.sleep(2)
-                
+                    time.sleep(2)
+                    
+                    # 滑動後再次檢測 (重複相同邏輯)
+                    captured_image2 = self.capture_window(self.target_hwnd)
+                    if captured_image2 is None:
+                        continue
+                        
+                    if not self.is_running:
+                        break
+                        
+                    match_found_after_scroll = False
+                    for template, name in zip(selected_templates, selected_names):
+                        match_loc, confidence = self.find_template_in_image(captured_image2, template)
+                        if match_loc is not None:
+                            match_x, match_y = match_loc
+                            self.log_message(f"滑動後找到匹配圖片 {name} 於位置 ({match_x}, {match_y})")
+                            
+                            # ✅ 檢查點擊狀態
+                            is_clickable, status = self.check_clickable_status(captured_image2, match_x, match_y)
+                            
+                            if is_clickable:
+                                # 執行相同的點擊邏輯...
+                                self.log_message(f"滑動後狀態檢查: {status} - 可以點擊", color="green")
+                                # (重複上面的統計和點擊邏輯)
+                                break
+                            else:
+                                self.log_message(f"滑動後狀態檢查: {status} - 已購買，跳過", color="orange")
+                    
+                    # 如果滑動後仍沒找到可點擊項目，執行底部流程
+                    if not match_found_after_scroll:
+                        self.auto_current_count += 1
+                        
+                        # 檢查次數限制
+                        if self.auto_max_count is not None and self.auto_current_count >= self.auto_max_count:
+                            self.log_message(f"✅ 已達到設定的最大次數 {self.auto_max_count}，自動停止", color="green")
+                            self.stop_capture()
+                            break
+                        
+                        # 執行底部點擊流程
+                        self.click_at_position(self.target_hwnd, self.click_positions['left_bottom_x'], 
+                                                self.click_positions['left_bottom_y'])
+                        time.sleep(1)
+                        
+                        if not self.is_running:
+                            break
+                            
+                        self.click_at_position(self.target_hwnd, self.click_positions['next_confirm_x'], 
+                                                self.click_positions['next_confirm_y'])
+                        
+                        # 增加天空石消耗
+                        if self.is_running:
+                            self.stats['skystones_consumed'] += 3
+                            self.update_statistics_display()
+                            self.update_auto_count_display()
+                            
+                        self.click_at_position(self.target_hwnd, self.click_positions['cancel_x'], 
+                                self.click_positions['cancel_y'], 2)
+                        time.sleep(2)
+                    
             except Exception as e:
                 self.log_message(f"自動化循環中發生錯誤: {e}")
                 time.sleep(1)
+
     
     def start_capture(self):
-        """✅ 開始自動化（禁用UI控件，重置計數）"""
+        """✅ 開始自動化（記錄開始時間）"""
         if not self.target_hwnd:
             messagebox.showerror("錯誤", "請先選擇目標視窗")
             return
@@ -723,7 +775,8 @@ class WindowCaptureBot:
             messagebox.showerror("錯誤", "請輸入有效的自動次數（數字或留空）")
             return
         
-        # ✅ 重置計數器
+        # ✅ 記錄開始時間和重置計數器
+        self.start_time = time.time()
         self.auto_current_count = 0
         self.update_auto_count_display()
         
@@ -744,8 +797,11 @@ class WindowCaptureBot:
             self.log_message("🚀 開始自動化流程（無限次數）...")
     
     def stop_capture(self):
-        """✅ 停止自動化（重新啟用UI控件）"""
+        """✅ 停止自動化（記錄結束時間並匯出CSV）"""
         self.is_running = False
+        
+        # ✅ 記錄結束時間
+        self.end_time = time.time()
         
         # ✅ 重新啟用UI控件
         self.toggle_ui_controls(True)
@@ -753,43 +809,176 @@ class WindowCaptureBot:
         self.start_button.config(state="normal")
         self.stop_button.config(state="disabled")
         
-        if self.auto_max_count is not None:
-            self.log_message(f"⏹️ 停止自動化流程（已執行 {self.auto_current_count}/{self.auto_max_count} 次）")
+        # ✅ 計算運行時間並匯出CSV
+        if self.start_time is not None:
+            duration_seconds = self.end_time - self.start_time
+            self.write_summary_to_csv(duration_seconds)
+            
+            # 格式化顯示運行時間
+            hours = int(duration_seconds // 3600)
+            minutes = int((duration_seconds % 3600) // 60)
+            seconds = int(duration_seconds % 60)
+            time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+            
+            if self.auto_max_count is not None:
+                self.log_message(f"⏹️ 停止自動化流程（已執行 {self.auto_current_count}/{self.auto_max_count} 次，運行時間: {time_str}）")
+            else:
+                self.log_message(f"⏹️ 停止自動化流程（已執行 {self.auto_current_count} 次，運行時間: {time_str}）")
         else:
             self.log_message(f"⏹️ 停止自動化流程（已執行 {self.auto_current_count} 次）")
     
+    def check_clickable_status(self, image, match_x, match_y):
+        """使用預載入模板檢查點擊狀態"""
+        try:
+            check_x = match_x + 255
+            check_y = match_y + 22
+            
+            # 確保區域在圖片範圍內
+            h, w = image.shape[:2]
+            if check_x + 25 > w or check_y + 13 > h or check_x < 0 or check_y < 0:
+                return False, "區域超出範圍"
+            
+            # 提取ROI區域
+            roi_gray = image[check_y:check_y+20, check_x:check_x+30]
+            #roi_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            
+            # ✅ 使用預載入的文字模板
+            try:
+                text11_idx = self.template_images.index("text_11.png")
+                text01_idx = self.template_images.index("text_01.png")
+                
+                template_11 = self.loaded_templates[text11_idx]
+                template_01 = self.loaded_templates[text01_idx]
+            except (ValueError, IndexError):
+                self.log_message("找不到文字模板索引")
+                return False, "模板索引錯誤"
+            
+            if template_11 is not None and template_01 is not None:
+                # 模板匹配
+                result_11 = cv2.matchTemplate(roi_gray, template_11, cv2.TM_CCOEFF_NORMED)
+                result_01 = cv2.matchTemplate(roi_gray, template_01, cv2.TM_CCOEFF_NORMED)
+                
+                _, max_val_11, _, _ = cv2.minMaxLoc(result_11)
+                _, max_val_01, _, _ = cv2.minMaxLoc(result_01)
+                
+                self.log_message(f"文字模板匹配: 1/1={max_val_11:.3f}, 0/1={max_val_01:.3f}")
+                
+                threshold = 0.7  # 匹配閾值
+                
+                if max_val_11 > threshold and max_val_11 > max_val_01:
+                    return True, "1/1"
+                elif max_val_01 > threshold:
+                    return False, "0/1"
+                else:
+                    self.log_message(f"文字模板匹配度過低: 1/1={max_val_11:.3f}, 0/1={max_val_01:.3f}")
+                    return False, "匹配度不足"
+            else:
+                missing = []
+                if template_11 is None:
+                    missing.append("text_11.png")
+                if template_01 is None:
+                    missing.append("text_01.png")
+                self.log_message(f"文字模板未載入: {', '.join(missing)}")
+                return False, f"模板未載入: {', '.join(missing)}"
+                
+        except Exception as e:
+            self.log_message(f"文字模板匹配錯誤: {e}")
+            return False, "檢查錯誤"
+
+    def draw_debug_rectangle(self, image, match_x, match_y, is_clickable):
+        """在圖片上畫出判定區域的紅框 (用於debug)"""
+        try:
+            check_x = match_x + 255
+            check_y = match_y + 22
+            
+            # 記錄座標信息
+            self.log_message(f"準備畫框: 原始位置({match_x}, {match_y}) -> 檢查位置({check_x}, {check_y})")
+            
+            # 確保座標在圖片範圍內
+            h, w = image.shape[:2]
+            if check_x < 0 or check_y < 0 or check_x + 20 > w or check_y + 10 > h:
+                self.log_message(f"⚠️ 畫框位置超出圖片範圍! 位置:({check_x},{check_y}) 圖片:{w}x{h}")
+                # 即使超出範圍，也畫一個小框標示
+                check_x = max(0, min(check_x, w-21))
+                check_y = max(0, min(check_y, h-11))
+            
+            # 設置顏色和線寬
+            if is_clickable:
+                color = (0, 255, 0)  # 綠色 BGR
+                status_text = "OK"
+            else:
+                color = (0, 0, 255)  # 紅色 BGR  
+                status_text = "BOUGHT"
+            
+            # 畫粗一點的矩形框 (線寬3)
+            cv2.rectangle(image, (check_x, check_y), (check_x + 25, check_y + 13), color, 3)
+            
+            # 在框下方加文字標示
+            text_y = check_y + 25 if check_y + 25 < h else check_y - 5
+            cv2.putText(image, status_text, (check_x, text_y), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 2)
+            
+            # 同時在模板匹配位置畫一個藍色框
+            cv2.rectangle(image, (match_x, match_y), (match_x + 50, match_y + 30), (255, 0, 0), 2)
+            cv2.putText(image, "MATCH", (match_x, match_y - 5), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 2)
+            
+            self.log_message(f"✅ 成功畫框: 檢查區域({check_x},{check_y}) 顏色:{color} 狀態:{status_text}")
+            return image
+            
+        except Exception as e:
+            self.log_message(f"畫框錯誤: {e}")
+            return image
+
     def test_capture(self):
-        """測試捕獲功能"""
+        """測試捕獲功能 - 加入debug紅框"""
         if not self.target_hwnd:
             messagebox.showerror("錯誤", "請先選擇目標視窗")
             return
+        
         self.resize_target_window(self.target_hwnd)
-
-        time.sleep(1)  # 等待視窗調整完成
-
+        time.sleep(1)
+        
         captured_image = self.capture_window(self.target_hwnd)
         if captured_image is not None:
-            # 保存測試圖片
-            cv2.imwrite("test_capture.png", captured_image)
-            self.log_message("測試捕獲成功，圖片保存為 test_capture.png")
+            debug_image = captured_image.copy()
             
-            # 測試模板匹配
+            # ✅ 只測試前3個模板（排除文字模板）
             selected_count = 0
-            for i, (var, template) in enumerate(zip(self.template_vars, self.loaded_templates)):
+            for i in range(3):  # 只處理前3個模板
+                var = self.template_vars[i]
+                template = self.loaded_templates[i]
+                
                 if var.get() and template is not None:
                     selected_count += 1
                     match_loc, confidence = self.find_template_in_image(captured_image, template)
                     name = self.template_images[i]
+                    
                     if match_loc is not None:
-                        self.log_message(f"測試匹配 {name}: 找到於({match_loc[0]}, {match_loc[1]}), 信心度: {confidence:.3f}")
+                        match_x, match_y = match_loc
+                        self.log_message(f"測試匹配 {name}: 找到於({match_x}, {match_y}), 信心度: {confidence:.3f}")
+                        
+                        # ✅ 檢查狀態並畫debug框
+                        is_clickable, status = self.check_clickable_status(captured_image, match_x, match_y)
+                        debug_image = self.draw_debug_rectangle(debug_image, match_x, match_y, is_clickable)
+                        
+                        self.log_message(f"狀態檢查: {status} - {'可點擊' if is_clickable else '已購買'}")
                     else:
                         self.log_message(f"測試匹配 {name}: 未找到, 最高信心度: {confidence:.3f}")
+            
+            # 保存原圖和debug圖
+            cv2.imwrite("test_capture.png", captured_image)
+            cv2.imwrite("test_capture_debug.png", debug_image)
+            
+            self.log_message("測試捕獲成功，圖片保存為 test_capture.png")
+            self.log_message("Debug圖片保存為 test_capture_debug.png (含紅框標記)")
             
             if selected_count == 0:
                 self.log_message("未選擇任何模板進行測試")
         else:
             self.log_message("測試捕獲失敗")
-    
+
+        
     def save_settings(self):
         """✅ 保存設定（包含統計數據和自動次數設定）"""
         settings = {
@@ -838,10 +1027,9 @@ class WindowCaptureBot:
     def run(self):
         """運行應用程序"""
         self.refresh_windows()
-        self.log_message("🚀E7 PC FULL AUTO v2.3 已啟動", color="green")
+        self.log_message("🚀E7 PC FULL AUTO v2.4 已啟動", color="green")
         self.log_message("開始前先確保 Windows顯示設定->縮放與配置->比例 為100%", color="red")
         self.root.mainloop()
-
 
 if __name__ == "__main__":
     try:

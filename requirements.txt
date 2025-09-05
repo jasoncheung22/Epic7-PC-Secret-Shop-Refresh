@@ -1,0 +1,11 @@
+# Python視窗自動化捕獲工具所需的依賴包
+
+# 電腦視覺和圖像處理
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# Windows系統API
+pywin32>=306
+
+# GUI框架 (tkinter 是Python內建的，不需要額外安裝)
