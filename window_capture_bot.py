@@ -17,8 +17,8 @@ import json
 class WindowCaptureBot:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("E7 PC FULL AUTO v2.2")
-        self.root.geometry("1000x750")
+        self.root.title("E7 PC FULL AUTO v2.3")
+        self.root.geometry("1000x800")  # 增加高度以容納新功能
         
         # 狀態變數
         self.target_window = None
@@ -26,6 +26,10 @@ class WindowCaptureBot:
         self.is_running = False
         self.capture_thread = None
         self.match_threshold = 0.8
+        
+        # ✅ 自動次數相關變數
+        self.auto_max_count = None  # 最大自動次數（None表示無限）
+        self.auto_current_count = 0  # 當前已執行次數
         
         # ✅ 統計變數
         self.stats = {
@@ -101,9 +105,14 @@ class WindowCaptureBot:
         stats_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         self.setup_statistics_display(stats_frame)
         
+        # ✅ 自動次數設定區域
+        auto_count_frame = ttk.LabelFrame(main_frame, text="自動次數設定", padding="5")
+        auto_count_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.setup_auto_count_ui(auto_count_frame)
+        
         # 匹配閾值設定
         threshold_frame = ttk.LabelFrame(main_frame, text="匹配設定", padding="5")
-        threshold_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        threshold_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         
         ttk.Label(threshold_frame, text="匹配閾值:").grid(row=0, column=0, padx=(0, 5))
         self.threshold_var = tk.StringVar(value="0.8")
@@ -113,7 +122,7 @@ class WindowCaptureBot:
         
         # 控制按鈕
         control_frame = ttk.Frame(main_frame)
-        control_frame.grid(row=4, column=0, columnspan=2, pady=(0, 10))
+        control_frame.grid(row=5, column=0, columnspan=2, pady=(0, 10))
         
         self.start_button = ttk.Button(control_frame, text="開始自動化", command=self.start_capture)
         self.start_button.grid(row=0, column=0, padx=(0, 10))
@@ -136,7 +145,7 @@ class WindowCaptureBot:
         
         # 狀態顯示
         status_frame = ttk.LabelFrame(main_frame, text="狀態資訊", padding="5")
-        status_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        status_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
         
         self.status_text = tk.Text(status_frame, height=15, width=90)
         scrollbar = ttk.Scrollbar(status_frame, orient="vertical", command=self.status_text.yview)
@@ -144,13 +153,13 @@ class WindowCaptureBot:
         
         self.status_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
-        self.ui_controls.append(self.status_text)
+        # 不要將 status_text 加入 ui_controls
         
         # 配置網格權重
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(5, weight=1)
+        main_frame.rowconfigure(6, weight=1)
         window_frame.columnconfigure(1, weight=1)
         status_frame.columnconfigure(0, weight=1)
         status_frame.rowconfigure(0, weight=1)
@@ -226,6 +235,36 @@ class WindowCaptureBot:
         self.friendship_label = ttk.Label(row2_frame, text="0", font=("Arial", 10, "bold"), foreground="green")
         self.friendship_label.grid(row=0, column=5)
     
+    def setup_auto_count_ui(self, parent_frame):
+        """✅ 設置自動次數UI"""
+        # 自動次數設定
+        ttk.Label(parent_frame, text="自動次數 (空白=無限):", font=("Arial", 10)).grid(row=0, column=0, padx=(0, 5))
+        
+        self.auto_count_var = tk.StringVar()
+        auto_count_entry = ttk.Entry(parent_frame, textvariable=self.auto_count_var, width=10)
+        auto_count_entry.grid(row=0, column=1, padx=(0, 20))
+        self.ui_controls.append(auto_count_entry)
+        
+        # 已刷新次數顯示
+        ttk.Label(parent_frame, text="已刷新次數:", font=("Arial", 10)).grid(row=0, column=2, padx=(20, 5))
+        self.current_count_label = ttk.Label(parent_frame, text="0", font=("Arial", 10, "bold"), foreground="darkgreen")
+        self.current_count_label.grid(row=0, column=3, padx=(0, 10))
+        
+        # 進度顯示
+        self.progress_label = ttk.Label(parent_frame, text="", font=("Arial", 9), foreground="gray")
+        self.progress_label.grid(row=0, column=4, padx=(10, 0))
+    
+    def update_auto_count_display(self):
+        """✅ 更新自動次數顯示"""
+        self.current_count_label.config(text=f"{self.auto_current_count}")
+        
+        # 更新進度顯示
+        if self.auto_max_count is not None:
+            progress_text = f"({self.auto_current_count}/{self.auto_max_count})"
+            self.progress_label.config(text=progress_text)
+        else:
+            self.progress_label.config(text="(無限)")
+    
     def update_statistics_display(self):
         """✅ 更新統計顯示"""
         self.skystone_label.config(text=f"{self.stats['skystones_consumed']:,}")
@@ -243,17 +282,18 @@ class WindowCaptureBot:
             'friendship_bookmarks': 0,
             'gold_consumed': 0
         }
+        # ✅ 同時重置自動次數
+        self.auto_current_count = 0
         self.update_statistics_display()
-        self.log_message("統計數據已重置", color="gray")
+        self.update_auto_count_display()
+        self.log_message("統計數據和計數已重置", color="gray")
     
     def toggle_ui_controls(self, enabled):
         """✅ 啟用/禁用UI控件 - 修正版"""
         state = "normal" if enabled else "disabled"
         for control in self.ui_controls:
             try:
-                # 排除 status_text，不要禁用日誌顯示
-                if control != self.status_text:
-                    control.config(state=state)
+                control.config(state=state)
             except:
                 pass
                 
@@ -379,13 +419,12 @@ class WindowCaptureBot:
             
             # 使用模板匹配
             result = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
-            self.log_message(f"match :{result}")
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
             
-            if result >= self.match_threshold:
-                return max_loc, result
+            if max_val >= self.match_threshold:
+                return max_loc, max_val
             else:
-                return None, result
+                return None, max_val
                 
         except Exception as e:
             self.log_message(f"模板匹配時發生錯誤: {e}")
@@ -413,7 +452,6 @@ class WindowCaptureBot:
                 if i < click_time-1:  # 前兩次點擊後等待
                     time.sleep(0.1)
             
-            #self.log_message(f"三次點擊完成: ({x}, {y})")
             return True
             
         except Exception as e:
@@ -423,10 +461,6 @@ class WindowCaptureBot:
     def simulate_vertical_scroll(self, hwnd, start_x, start_y, distance=100):
         """更真實的長按拖動模擬"""
         try:
-            # 激活視窗確保能接收消息
-            #win32gui.SetForegroundWindow(hwnd)
-            #time.sleep(0.05)
-            
             # 1. 發送鼠標移動到起始位置
             lParam_start = win32api.MAKELONG(start_x, start_y)
             win32gui.PostMessage(hwnd, win32con.WM_MOUSEMOVE, 0, lParam_start)
@@ -458,7 +492,6 @@ class WindowCaptureBot:
             # 5. 釋放左鍵
             win32gui.PostMessage(hwnd, win32con.WM_LBUTTONUP, 0, lParam_end)
             win32gui.PostMessage(hwnd, win32con.WM_MOUSEMOVE, 0, lParam_end)
-            #self.log_message(f"拖動滾動: 從({start_x},{start_y})到({start_x},{end_y})")
             return True
             
         except Exception as e:
@@ -485,13 +518,14 @@ class WindowCaptureBot:
             return False
     
     def capture_loop(self):
-        """✅ 主要的自動化循環（加入統計功能）"""
+        """✅ 主要的自動化循環（加入次數限制和統計功能）"""
         # 調整視窗大小
         if not self.resize_target_window(self.target_hwnd):
             self.log_message("無法調整視窗大小，停止自動化")
             self.stop_capture()
             return
-        self.log_message("自動化進行時滑鼠不要進入目標視窗，會影響點擊準確度!!!",color="red")
+        
+        self.log_message("自動化進行時滑鼠不要進入目標視窗，會影響點擊準確度!!!", color="red")
         time.sleep(1)  # 等待視窗調整完成
         
         while self.is_running:
@@ -565,7 +599,6 @@ class WindowCaptureBot:
                     break
                 
                 # 沒有找到，執行滑動
-                #self.log_message("執行向上滑動")
                 self.simulate_vertical_scroll(
                     self.target_hwnd, 
                     self.click_positions['scroll_x'], 
@@ -624,6 +657,16 @@ class WindowCaptureBot:
                         time.sleep(1)
                         break
                 
+
+                self.auto_current_count += 1  # 增加刷新次數
+                # ✅ 檢查是否達到最大次數
+                if self.auto_max_count is not None and self.auto_current_count >= self.auto_max_count:
+                    self.log_message(f"✅ 已達到設定的最大次數 {self.auto_max_count}，自動停止", color="green")
+                    self.stop_capture()
+                    self.update_statistics_display()
+                    self.update_auto_count_display()  # 更新次數顯示
+                    break
+                
                 # 如果滑動後還沒找到，執行底部點擊流程
                 self.click_at_position(self.target_hwnd, self.click_positions['left_bottom_x'], 
                                         self.click_positions['left_bottom_y'])
@@ -635,19 +678,22 @@ class WindowCaptureBot:
                 self.click_at_position(self.target_hwnd, self.click_positions['next_confirm_x'], 
                                         self.click_positions['next_confirm_y'])
                 
-                # ✅ 每次循環結束前增加天空石消耗
+                # ✅ 每次循環結束前增加天空石消耗和刷新次數
                 if self.is_running:
                     self.stats['skystones_consumed'] += 3
                     self.update_statistics_display()
+                    self.update_auto_count_display()  # 更新次數顯示
+                    
                 self.click_at_position(self.target_hwnd, self.click_positions['cancel_x'], 
-                        self.click_positions['cancel_y'],2)
+                        self.click_positions['cancel_y'], 2)
                 time.sleep(2)
+                
             except Exception as e:
                 self.log_message(f"自動化循環中發生錯誤: {e}")
                 time.sleep(1)
     
     def start_capture(self):
-        """✅ 開始自動化（禁用UI控件）"""
+        """✅ 開始自動化（禁用UI控件，重置計數）"""
         if not self.target_hwnd:
             messagebox.showerror("錯誤", "請先選擇目標視窗")
             return
@@ -664,6 +710,23 @@ class WindowCaptureBot:
             messagebox.showerror("錯誤", "請輸入有效的匹配閾值")
             return
         
+        # ✅ 設定自動次數限制
+        try:
+            auto_count_text = self.auto_count_var.get().strip()
+            if auto_count_text == "" or auto_count_text == "0":
+                self.auto_max_count = None  # 無限
+                self.log_message("設定為無限次數模式")
+            else:
+                self.auto_max_count = int(auto_count_text)
+                self.log_message(f"設定最大自動次數: {self.auto_max_count}")
+        except ValueError:
+            messagebox.showerror("錯誤", "請輸入有效的自動次數（數字或留空）")
+            return
+        
+        # ✅ 重置計數器
+        self.auto_current_count = 0
+        self.update_auto_count_display()
+        
         self.is_running = True
         
         # ✅ 禁用UI控件
@@ -675,7 +738,10 @@ class WindowCaptureBot:
         self.start_button.config(state="disabled")
         self.stop_button.config(state="normal")
         
-        self.log_message("🚀 開始自動化流程...")
+        if self.auto_max_count is not None:
+            self.log_message(f"🚀 開始自動化流程（限制 {self.auto_max_count} 次）...")
+        else:
+            self.log_message("🚀 開始自動化流程（無限次數）...")
     
     def stop_capture(self):
         """✅ 停止自動化（重新啟用UI控件）"""
@@ -687,7 +753,10 @@ class WindowCaptureBot:
         self.start_button.config(state="normal")
         self.stop_button.config(state="disabled")
         
-        self.log_message("⏹️ 停止自動化流程")
+        if self.auto_max_count is not None:
+            self.log_message(f"⏹️ 停止自動化流程（已執行 {self.auto_current_count}/{self.auto_max_count} 次）")
+        else:
+            self.log_message(f"⏹️ 停止自動化流程（已執行 {self.auto_current_count} 次）")
     
     def test_capture(self):
         """測試捕獲功能"""
@@ -722,10 +791,11 @@ class WindowCaptureBot:
             self.log_message("測試捕獲失敗")
     
     def save_settings(self):
-        """✅ 保存設定（包含統計數據）"""
+        """✅ 保存設定（包含統計數據和自動次數設定）"""
         settings = {
             "window": self.window_var.get(),
             "threshold": self.threshold_var.get(),
+            "auto_count": self.auto_count_var.get(),
             "template_selections": [var.get() for var in self.template_vars],
             "statistics": self.stats
         }
@@ -738,13 +808,14 @@ class WindowCaptureBot:
             self.log_message(f"保存設定時發生錯誤: {e}")
     
     def load_settings(self):
-        """✅ 載入設定（包含統計數據）"""
+        """✅ 載入設定（包含統計數據和自動次數設定）"""
         try:
             if os.path.exists("settings.json"):
                 with open("settings.json", "r", encoding="utf-8") as f:
                     settings = json.load(f)
                 
                 self.threshold_var.set(settings.get("threshold", "0.8"))
+                self.auto_count_var.set(settings.get("auto_count", ""))
                 
                 # 載入模板選擇狀態（friend.png 默認不勾選）
                 template_selections = settings.get("template_selections", [True, True, False])
@@ -759,6 +830,7 @@ class WindowCaptureBot:
                         self.stats[key] = saved_stats[key]
                 
                 self.update_statistics_display()
+                self.update_auto_count_display()
                 self.log_message("設定和統計已載入")
         except Exception as e:
             self.log_message(f"載入設定時發生錯誤: {e}")
@@ -766,10 +838,8 @@ class WindowCaptureBot:
     def run(self):
         """運行應用程序"""
         self.refresh_windows()
-        self.log_message("🚀E7 PC FULL AUTO v2.2 已啟動",color="green")
-        #self.log_message("自動化進行時滑鼠不要進入目標視窗，會影響點擊準確度!!!",color="red")
-        #self.log_message("📊 新增統計功能：天空石、金幣消耗及各種書簽獲得量")
-        #self.log_message("請確保 image/ 資料夾中有 covenant.png, mystic.png, friend.png 三張圖片")
+        self.log_message("🚀E7 PC FULL AUTO v2.3 已啟動", color="green")
+        self.log_message("開始前先確保 Windows顯示設定->縮放與配置->比例 為100%", color="red")
         self.root.mainloop()
 
 
