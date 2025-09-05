@@ -18,7 +18,7 @@ from datetime import datetime
 class WindowCaptureBot:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("E7 PC FULL AUTO v2.4")
+        self.root.title("E7 PC FULL AUTO v2.5")
         self.root.geometry("1000x800")  # 增加高度以容納新功能
         
         # 狀態變數
@@ -615,7 +615,6 @@ class WindowCaptureBot:
                     break
                     
                 # 檢查是否找到匹配的模板
-                match_found = False
                 for template, name in zip(selected_templates, selected_names):
                     match_loc, confidence = self.find_template_in_image(captured_image, template)
                     if match_loc is not None:
@@ -629,6 +628,20 @@ class WindowCaptureBot:
                             # 可以點擊 - 執行原本邏輯
                             self.log_message(f"狀態檢查: {status} - 可以點擊", color="green")
                             
+                            # 點擊匹配位置
+                            click_x = match_x + 280
+                            click_y = match_y + 25
+                            time.sleep(1)
+                            self.click_at_position(self.target_hwnd, click_x, click_y)
+                            time.sleep(1)
+                            
+                            if not self.is_running:
+                                break
+                                
+                            # 點擊畫面中央確認
+                            self.click_at_position(self.target_hwnd, self.click_positions['center_confirm_x'], 
+                                                self.click_positions['center_confirm_y'])
+                                                        
                             # 根據圖片類型添加統計和顏色日誌
                             if name == "covenant.png":
                                 self.stats['covenant_bookmarks'] += 5
@@ -645,7 +658,44 @@ class WindowCaptureBot:
                             
                             # 更新統計顯示
                             self.update_statistics_display()
-                            
+                            time.sleep(1)
+                        else:
+                            # 不能點擊 - 記錄已購買
+                            self.log_message(f"狀態檢查: {status} - 已購買，跳過", color="orange")
+                
+                if not self.is_running:
+                    break
+                
+                # 沒有找到可點擊的目標，執行滑動
+                self.simulate_vertical_scroll(
+                    self.target_hwnd, 
+                    self.click_positions['scroll_x'], 
+                    self.click_positions['scroll_y'],
+                    self.click_positions['scroll_distance']
+                )
+                
+                time.sleep(2)
+                
+                # 滑動後再次檢測 (重複相同邏輯)
+                captured_image2 = self.capture_window(self.target_hwnd)
+                if captured_image2 is None:
+                    continue
+                    
+                if not self.is_running:
+                    break
+                    
+                for template, name in zip(selected_templates, selected_names):
+                    match_loc, confidence = self.find_template_in_image(captured_image2, template)
+                    if match_loc is not None:
+                        match_x, match_y = match_loc
+                        self.log_message(f"滑動後找到匹配圖片 {name} 於位置 ({match_x}, {match_y})")
+                        
+                        # ✅ 檢查點擊狀態
+                        is_clickable, status = self.check_clickable_status(captured_image2, match_x, match_y)
+                        
+                        if is_clickable:
+                            # 執行相同的點擊邏輯...
+                            self.log_message(f"滑動後狀態檢查: {status} - 可以點擊", color="green")
                             # 點擊匹配位置
                             click_x = match_x + 280
                             click_y = match_y + 25
@@ -659,85 +709,56 @@ class WindowCaptureBot:
                             # 點擊畫面中央確認
                             self.click_at_position(self.target_hwnd, self.click_positions['center_confirm_x'], 
                                                 self.click_positions['center_confirm_y'])
+                                                
+                            # 根據圖片類型添加統計和顏色日誌
+                            if name == "covenant.png":
+                                self.stats['covenant_bookmarks'] += 5
+                                self.stats['gold_consumed'] += 184000
+                                self.log_message("找到聖約書簽！", color="blue")
+                            elif name == "mystic.png":
+                                self.stats['mystic_bookmarks'] += 50
+                                self.stats['gold_consumed'] += 280000
+                                self.log_message("找到神秘書簽！", color="red")
+                            elif name == "friend.png":
+                                self.stats['friendship_bookmarks'] += 5
+                                self.stats['gold_consumed'] += 18000
+                                self.log_message("找到友情書簽！", color="green")
                             
+                            # 更新統計顯示
+                            self.update_statistics_display()
                             time.sleep(1)
                             break
                         else:
-                            # 不能點擊 - 記錄已購買
-                            self.log_message(f"狀態檢查: {status} - 已購買，跳過", color="orange")
-                            # 繼續檢查其他模板
-                            continue
+                            self.log_message(f"滑動後狀態檢查: {status} - 已購買，跳過", color="orange")
+                
+                self.auto_current_count += 1
+                
+                # 檢查次數限制
+                if self.auto_max_count is not None and self.auto_current_count >= self.auto_max_count:
+                    self.log_message(f"✅ 已達到設定的最大次數 {self.auto_max_count}，自動停止", color="green")
+                    self.stop_capture()
+                    break
+                
+                # 執行底部點擊流程
+                self.click_at_position(self.target_hwnd, self.click_positions['left_bottom_x'], 
+                                        self.click_positions['left_bottom_y'])
+                time.sleep(1)
                 
                 if not self.is_running:
                     break
+                    
+                self.click_at_position(self.target_hwnd, self.click_positions['next_confirm_x'], 
+                                        self.click_positions['next_confirm_y'])
                 
-                if not match_found:
-                    # 沒有找到可點擊的目標，執行滑動
-                    self.simulate_vertical_scroll(
-                        self.target_hwnd, 
-                        self.click_positions['scroll_x'], 
-                        self.click_positions['scroll_y'],
-                        self.click_positions['scroll_distance']
-                    )
+                # 增加天空石消耗
+                if self.is_running:
+                    self.stats['skystones_consumed'] += 3
+                    self.update_statistics_display()
+                    self.update_auto_count_display()
                     
-                    time.sleep(2)
-                    
-                    # 滑動後再次檢測 (重複相同邏輯)
-                    captured_image2 = self.capture_window(self.target_hwnd)
-                    if captured_image2 is None:
-                        continue
-                        
-                    if not self.is_running:
-                        break
-                        
-                    match_found_after_scroll = False
-                    for template, name in zip(selected_templates, selected_names):
-                        match_loc, confidence = self.find_template_in_image(captured_image2, template)
-                        if match_loc is not None:
-                            match_x, match_y = match_loc
-                            self.log_message(f"滑動後找到匹配圖片 {name} 於位置 ({match_x}, {match_y})")
-                            
-                            # ✅ 檢查點擊狀態
-                            is_clickable, status = self.check_clickable_status(captured_image2, match_x, match_y)
-                            
-                            if is_clickable:
-                                # 執行相同的點擊邏輯...
-                                self.log_message(f"滑動後狀態檢查: {status} - 可以點擊", color="green")
-                                # (重複上面的統計和點擊邏輯)
-                                break
-                            else:
-                                self.log_message(f"滑動後狀態檢查: {status} - 已購買，跳過", color="orange")
-                    
-                    # 如果滑動後仍沒找到可點擊項目，執行底部流程
-                    if not match_found_after_scroll:
-                        self.auto_current_count += 1
-                        
-                        # 檢查次數限制
-                        if self.auto_max_count is not None and self.auto_current_count >= self.auto_max_count:
-                            self.log_message(f"✅ 已達到設定的最大次數 {self.auto_max_count}，自動停止", color="green")
-                            self.stop_capture()
-                            break
-                        
-                        # 執行底部點擊流程
-                        self.click_at_position(self.target_hwnd, self.click_positions['left_bottom_x'], 
-                                                self.click_positions['left_bottom_y'])
-                        time.sleep(1)
-                        
-                        if not self.is_running:
-                            break
-                            
-                        self.click_at_position(self.target_hwnd, self.click_positions['next_confirm_x'], 
-                                                self.click_positions['next_confirm_y'])
-                        
-                        # 增加天空石消耗
-                        if self.is_running:
-                            self.stats['skystones_consumed'] += 3
-                            self.update_statistics_display()
-                            self.update_auto_count_display()
-                            
-                        self.click_at_position(self.target_hwnd, self.click_positions['cancel_x'], 
-                                self.click_positions['cancel_y'], 2)
-                        time.sleep(2)
+                self.click_at_position(self.target_hwnd, self.click_positions['cancel_x'], 
+                        self.click_positions['cancel_y'], 2)
+                time.sleep(2)
                     
             except Exception as e:
                 self.log_message(f"自動化循環中發生錯誤: {e}")
@@ -1027,7 +1048,7 @@ class WindowCaptureBot:
     def run(self):
         """運行應用程序"""
         self.refresh_windows()
-        self.log_message("🚀E7 PC FULL AUTO v2.4 已啟動", color="green")
+        self.log_message("🚀E7 PC FULL AUTO v2.5 已啟動", color="green")
         self.log_message("開始前先確保 Windows顯示設定->縮放與配置->比例 為100%", color="red")
         self.root.mainloop()
 
