@@ -18,8 +18,8 @@ from datetime import datetime
 class WindowCaptureBot:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("E7 PC FULL AUTO v2.5")
-        self.root.geometry("1000x800")  # 增加高度以容納新功能
+        self.root.title("E7 PC FULL AUTO v2.6")
+        self.root.geometry("1000x900")  # 增加高度以容納新功能
         
         # 狀態變數
         self.target_window = None
@@ -35,6 +35,10 @@ class WindowCaptureBot:
         # ✅ 自動次數相關變數
         self.auto_max_count = None  # 最大自動次數（None表示無限）
         self.auto_current_count = 0  # 當前已執行次數
+        
+        # ✅ 新增：目標值變數
+        self.covenant_target = None
+        self.mystic_target = None
         
         # ✅ 統計變數
         self.stats = {
@@ -110,8 +114,8 @@ class WindowCaptureBot:
         stats_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         self.setup_statistics_display(stats_frame)
         
-        # ✅ 自動次數設定區域
-        auto_count_frame = ttk.LabelFrame(main_frame, text="自動次數設定", padding="5")
+        # ✅ 自動次數設定區域（修改為包含目標值）
+        auto_count_frame = ttk.LabelFrame(main_frame, text="自動次數與目標設定", padding="5")
         auto_count_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         self.setup_auto_count_ui(auto_count_frame)
         
@@ -212,7 +216,7 @@ class WindowCaptureBot:
             self.ui_controls.append(checkbox)
 
     def setup_statistics_display(self, parent_frame):
-        """✅ 設置統計顯示UI"""
+        """✅ 設置統計顯示UI - 包含機率統計"""
         # 第一行：天空石和金幣
         row1_frame = ttk.Frame(parent_frame)
         row1_frame.grid(row=0, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 5))
@@ -240,25 +244,63 @@ class WindowCaptureBot:
         ttk.Label(row2_frame, text="友情書簽:", font=("Arial", 10)).grid(row=0, column=4, padx=(0, 5))
         self.friendship_label = ttk.Label(row2_frame, text="0", font=("Arial", 10, "bold"), foreground="green")
         self.friendship_label.grid(row=0, column=5)
+        
+        # ✅ 第三行：機率統計
+        row3_frame = ttk.Frame(parent_frame)
+        row3_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 5))
+        
+        ttk.Label(row3_frame, text="聖約書簽出現率:", font=("Arial", 10)).grid(row=0, column=0, padx=(0, 5))
+        self.covenant_rate_label = ttk.Label(row3_frame, text="0.00%", font=("Arial", 10, "bold"))
+        self.covenant_rate_label.grid(row=0, column=1, padx=(0, 20))
+        
+        ttk.Label(row3_frame, text="神秘書簽出現率:", font=("Arial", 10)).grid(row=0, column=2, padx=(0, 5))
+        self.mystic_rate_label = ttk.Label(row3_frame, text="0.00%", font=("Arial", 10, "bold"))
+        self.mystic_rate_label.grid(row=0, column=3, padx=(0, 20))
+        
+        # 已刷新次數顯示
+        ttk.Label(row3_frame, text="已刷新次數:", font=("Arial", 10)).grid(row=0, column=4, padx=(20, 5))
+        self.current_count_label = ttk.Label(row3_frame, text="0", font=("Arial", 10, "bold"), foreground="darkgreen")
+        self.current_count_label.grid(row=0, column=5, padx=(0, 10))
     
     def setup_auto_count_ui(self, parent_frame):
-        """✅ 設置自動次數UI"""
-        # 自動次數設定
-        ttk.Label(parent_frame, text="自動次數 (空白=無限):", font=("Arial", 10)).grid(row=0, column=0, padx=(0, 5))
+        """✅ 設置自動次數和目標值UI"""
+        # 第一行：自動次數設定
+        row1_frame = ttk.Frame(parent_frame)
+        row1_frame.grid(row=0, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        ttk.Label(row1_frame, text="自動次數 (空白=無限):", font=("Arial", 10)).grid(row=0, column=0, padx=(0, 5))
         
         self.auto_count_var = tk.StringVar()
-        auto_count_entry = ttk.Entry(parent_frame, textvariable=self.auto_count_var, width=10)
+        auto_count_entry = ttk.Entry(row1_frame, textvariable=self.auto_count_var, width=10)
         auto_count_entry.grid(row=0, column=1, padx=(0, 20))
         self.ui_controls.append(auto_count_entry)
         
-        # 已刷新次數顯示
-        ttk.Label(parent_frame, text="已刷新次數:", font=("Arial", 10)).grid(row=0, column=2, padx=(20, 5))
-        self.current_count_label = ttk.Label(parent_frame, text="0", font=("Arial", 10, "bold"), foreground="darkgreen")
-        self.current_count_label.grid(row=0, column=3, padx=(0, 10))
-        
         # 進度顯示
-        self.progress_label = ttk.Label(parent_frame, text="", font=("Arial", 9), foreground="gray")
-        self.progress_label.grid(row=0, column=4, padx=(10, 0))
+        self.progress_label = ttk.Label(row1_frame, text="", font=("Arial", 9), foreground="gray")
+        self.progress_label.grid(row=0, column=2, padx=(10, 0))
+        
+        # ✅ 第二行：目標值設定
+        row2_frame = ttk.Frame(parent_frame)
+        row2_frame.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(0, 5))
+        
+        ttk.Label(row2_frame, text="聖約書簽目標 (空白=無限):", font=("Arial", 10)).grid(row=0, column=0, padx=(0, 5))
+        
+        self.covenant_target_var = tk.StringVar()
+        covenant_target_entry = ttk.Entry(row2_frame, textvariable=self.covenant_target_var, width=10)
+        covenant_target_entry.grid(row=0, column=1, padx=(0, 20))
+        self.ui_controls.append(covenant_target_entry)
+        
+        ttk.Label(row2_frame, text="神秘書簽目標 (空白=無限):", font=("Arial", 10)).grid(row=0, column=2, padx=(20, 5))
+        
+        self.mystic_target_var = tk.StringVar()
+        mystic_target_entry = ttk.Entry(row2_frame, textvariable=self.mystic_target_var, width=10)
+        mystic_target_entry.grid(row=0, column=3, padx=(0, 20))
+        self.ui_controls.append(mystic_target_entry)
+        
+        # ✅ 重置所有目標按鈕
+        reset_targets_btn = ttk.Button(row2_frame, text="重置所有目標", command=self.reset_targets)
+        reset_targets_btn.grid(row=0, column=4, padx=(20, 0))
+        self.ui_controls.append(reset_targets_btn)
     
     def update_auto_count_display(self):
         """✅ 更新自動次數顯示"""
@@ -272,12 +314,44 @@ class WindowCaptureBot:
             self.progress_label.config(text="(無限)")
     
     def update_statistics_display(self):
-        """✅ 更新統計顯示"""
+        """✅ 更新統計顯示 - 包含機率計算"""
         self.skystone_label.config(text=f"{self.stats['skystones_consumed']:,}")
         self.gold_label.config(text=f"{self.stats['gold_consumed']:,}")
         self.covenant_label.config(text=f"{self.stats['covenant_bookmarks']:,}")
         self.mystic_label.config(text=f"{self.stats['mystic_bookmarks']:,}")
         self.friendship_label.config(text=f"{self.stats['friendship_bookmarks']:,}")
+        
+        # ✅ 計算並顯示機率統計
+        refresh_count = max(self.auto_current_count, 1)  # 避免除零
+        
+        # 聖約書簽出現率 = (covenant_bookmarks / 5) / 刷新次數 * 100
+        covenant_rate = (self.stats['covenant_bookmarks'] / 5) / refresh_count * 100
+        
+        # 神秘書簽出現率 = (mystic_bookmarks / 50) / 刷新次數 * 100
+        mystic_rate = (self.stats['mystic_bookmarks'] / 50) / refresh_count * 100
+        
+        # ✅ 聖約書簽顏色和符號邏輯
+        if covenant_rate < 3.8:
+            self.covenant_rate_label.config(text=f"⬇ {covenant_rate:.2f}%", foreground="red")
+        elif abs(covenant_rate - 3.8) < 0.01:  # 約等於3.8%
+            self.covenant_rate_label.config(text=f"{covenant_rate:.2f}%", foreground="black")
+        else:
+            self.covenant_rate_label.config(text=f"⬆ {covenant_rate:.2f}%", foreground="green")
+        
+        # ✅ 神秘書簽顏色和符號邏輯
+        if mystic_rate < 1.0:
+            self.mystic_rate_label.config(text=f"⬇ {mystic_rate:.2f}%", foreground="red")
+        elif abs(mystic_rate - 1.0) < 0.01:  # 約等於1%
+            self.mystic_rate_label.config(text=f"{mystic_rate:.2f}%", foreground="black")
+        else:
+            self.mystic_rate_label.config(text=f"⬆ {mystic_rate:.2f}%", foreground="green")
+    
+    def reset_targets(self):
+        """✅ 重置所有目標值輸入"""
+        self.auto_count_var.set("")
+        self.covenant_target_var.set("")
+        self.mystic_target_var.set("")
+        self.log_message("已重置所有目標值設定", color="gray")
     
     def reset_statistics(self):
         """✅ 重置統計數據"""
@@ -304,16 +378,16 @@ class WindowCaptureBot:
                 pass
     
     def write_summary_to_csv(self, duration_seconds):
-        """✅ 將自動化總結寫入CSV文件"""
+        """✅ 將自動化總結寫入CSV文件 - 包含機率統計"""
         try:
             filename = "automation_summary.csv"
             file_exists = os.path.isfile(filename)
             
-            # CSV欄位定義
+            # ✅ CSV欄位定義 - 添加機率統計
             fieldnames = [
                 '開始時間', '結束時間', '使用時間(HH:MM:SS)',
                 '刷新次數', '天空石消耗', '聖約書籤獲得', '神秘書籤獲得',
-                '友情書籤獲得', '金幣消耗'
+                '友情書籤獲得', '金幣消耗', '聖約出現率(%)', '神秘出現率(%)'
             ]
             
             with open(filename, mode='a', newline='', encoding='utf-8-sig') as csvfile:
@@ -333,6 +407,11 @@ class WindowCaptureBot:
                 seconds = int(duration_seconds % 60)
                 duration_formatted = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
                 
+                # ✅ 計算機率統計
+                refresh_count = max(self.auto_current_count, 1)
+                covenant_rate = (self.stats['covenant_bookmarks'] / 5) / refresh_count * 100
+                mystic_rate = (self.stats['mystic_bookmarks'] / 50) / refresh_count * 100
+                
                 # 寫入數據行
                 row = {
                     '開始時間': start_str,
@@ -343,7 +422,9 @@ class WindowCaptureBot:
                     '聖約書籤獲得': self.stats['covenant_bookmarks'],
                     '神秘書籤獲得': self.stats['mystic_bookmarks'],
                     '友情書籤獲得': self.stats['friendship_bookmarks'],
-                    '金幣消耗': self.stats['gold_consumed']
+                    '金幣消耗': self.stats['gold_consumed'],
+                    '聖約出現率(%)': f"{covenant_rate:.2f}",
+                    '神秘出現率(%)': f"{mystic_rate:.2f}"
                 }
                 
                 writer.writerow(row)
@@ -579,7 +660,7 @@ class WindowCaptureBot:
             return False
     
     def capture_loop(self):
-        """主要的自動化循環 - 加入狀態判定"""
+        """✅ 主要的自動化循環 - 加入目標值停止判斷"""
         # 調整視窗大小
         if not self.resize_target_window(self.target_hwnd):
             self.log_message("無法調整視窗大小，停止自動化")
@@ -733,11 +814,43 @@ class WindowCaptureBot:
                 
                 self.auto_current_count += 1
                 
-                # 檢查次數限制
-                if self.auto_max_count is not None and self.auto_current_count >= self.auto_max_count:
-                    self.log_message(f"✅ 已達到設定的最大次數 {self.auto_max_count}，自動停止", color="green")
-                    self.stop_capture()
-                    break
+                # ✅ 檢查所有目標值條件
+                try:
+                    auto_count_text = self.auto_count_var.get().strip()
+                    covenant_target_text = self.covenant_target_var.get().strip()
+                    mystic_target_text = self.mystic_target_var.get().strip()
+                    
+                    target_reached = False
+                    target_messages = []
+                    
+                    # 檢查自動次數目標
+                    if auto_count_text and auto_count_text != "0":
+                        auto_target = int(auto_count_text)
+                        if self.auto_current_count >= auto_target:
+                            target_reached = True
+                            target_messages.append(f"自動次數達標 ({self.auto_current_count}/{auto_target})")
+                    
+                    # 檢查聖約書簽目標
+                    if covenant_target_text and covenant_target_text != "0":
+                        covenant_target = int(covenant_target_text)
+                        if self.stats['covenant_bookmarks'] >= covenant_target:
+                            target_reached = True
+                            target_messages.append(f"聖約書簽達標 ({self.stats['covenant_bookmarks']}/{covenant_target})")
+                    
+                    # 檢查神秘書簽目標
+                    if mystic_target_text and mystic_target_text != "0":
+                        mystic_target = int(mystic_target_text)
+                        if self.stats['mystic_bookmarks'] >= mystic_target:
+                            target_reached = True
+                            target_messages.append(f"神秘書簽達標 ({self.stats['mystic_bookmarks']}/{mystic_target})")
+                    
+                    if target_reached:
+                        self.log_message(f"✅ 達成目標條件：{'; '.join(target_messages)}，自動停止", color="green")
+                        self.stop_capture()
+                        break
+                        
+                except ValueError:
+                    pass  # 忽略無效的目標值輸入
                 
                 # 執行底部點擊流程
                 self.click_at_position(self.target_hwnd, self.click_positions['left_bottom_x'], 
@@ -764,9 +877,8 @@ class WindowCaptureBot:
                 self.log_message(f"自動化循環中發生錯誤: {e}")
                 time.sleep(1)
 
-    
     def start_capture(self):
-        """✅ 開始自動化（記錄開始時間）"""
+        """✅ 開始自動化（記錄開始時間並重置統計）"""
         if not self.target_hwnd:
             messagebox.showerror("錯誤", "請先選擇目標視窗")
             return
@@ -796,10 +908,21 @@ class WindowCaptureBot:
             messagebox.showerror("錯誤", "請輸入有效的自動次數（數字或留空）")
             return
         
-        # ✅ 記錄開始時間和重置計數器
-        self.start_time = time.time()
+        # ✅ 重置統計資訊和計數器
+        self.stats = {
+            'skystones_consumed': 0,
+            'covenant_bookmarks': 0,
+            'mystic_bookmarks': 0,
+            'friendship_bookmarks': 0,
+            'gold_consumed': 0
+        }
         self.auto_current_count = 0
+        self.start_time = time.time()
+        
+        # 更新顯示
+        self.update_statistics_display()
         self.update_auto_count_display()
+        self.log_message("統計資訊已自動重置", color="gray")
         
         self.is_running = True
         
@@ -816,6 +939,7 @@ class WindowCaptureBot:
             self.log_message(f"🚀 開始自動化流程（限制 {self.auto_max_count} 次）...")
         else:
             self.log_message("🚀 開始自動化流程（無限次數）...")
+
     
     def stop_capture(self):
         """✅ 停止自動化（記錄結束時間並匯出CSV）"""
@@ -841,12 +965,11 @@ class WindowCaptureBot:
             seconds = int(duration_seconds % 60)
             time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
             
-            if self.auto_max_count is not None:
-                self.log_message(f"⏹️ 停止自動化流程（已執行 {self.auto_current_count}/{self.auto_max_count} 次，運行時間: {time_str}）")
-            else:
-                self.log_message(f"⏹️ 停止自動化流程（已執行 {self.auto_current_count} 次，運行時間: {time_str}）")
+            self.log_message(f"⏹️ 停止自動化流程（已執行 {self.auto_current_count} 次，運行時間: {time_str}）")
         else:
             self.log_message(f"⏹️ 停止自動化流程（已執行 {self.auto_current_count} 次）")
+        self.update_statistics_display()
+        self.update_auto_count_display()
     
     def check_clickable_status(self, image, match_x, match_y):
         """使用預載入模板檢查點擊狀態"""
@@ -861,7 +984,6 @@ class WindowCaptureBot:
             
             # 提取ROI區域
             roi_gray = image[check_y:check_y+20, check_x:check_x+30]
-            #roi_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
             
             # ✅ 使用預載入的文字模板
             try:
@@ -999,13 +1121,14 @@ class WindowCaptureBot:
         else:
             self.log_message("測試捕獲失敗")
 
-        
     def save_settings(self):
-        """✅ 保存設定（包含統計數據和自動次數設定）"""
+        """✅ 保存設定（包含統計數據和目標值設定）"""
         settings = {
             "window": self.window_var.get(),
             "threshold": self.threshold_var.get(),
             "auto_count": self.auto_count_var.get(),
+            "covenant_target": self.covenant_target_var.get(),
+            "mystic_target": self.mystic_target_var.get(),
             "template_selections": [var.get() for var in self.template_vars],
             "statistics": self.stats
         }
@@ -1018,7 +1141,7 @@ class WindowCaptureBot:
             self.log_message(f"保存設定時發生錯誤: {e}")
     
     def load_settings(self):
-        """✅ 載入設定（包含統計數據和自動次數設定）"""
+        """✅ 載入設定（包含統計數據和目標值設定）"""
         try:
             if os.path.exists("settings.json"):
                 with open("settings.json", "r", encoding="utf-8") as f:
@@ -1026,6 +1149,8 @@ class WindowCaptureBot:
                 
                 self.threshold_var.set(settings.get("threshold", "0.8"))
                 self.auto_count_var.set(settings.get("auto_count", ""))
+                self.covenant_target_var.set(settings.get("covenant_target", ""))
+                self.mystic_target_var.set(settings.get("mystic_target", ""))
                 
                 # 載入模板選擇狀態（friend.png 默認不勾選）
                 template_selections = settings.get("template_selections", [True, True, False])
@@ -1048,7 +1173,7 @@ class WindowCaptureBot:
     def run(self):
         """運行應用程序"""
         self.refresh_windows()
-        self.log_message("🚀E7 PC FULL AUTO v2.5 已啟動", color="green")
+        self.log_message("🚀E7 PC FULL AUTO v2.6 已啟動", color="green")
         self.log_message("開始前先確保 Windows顯示設定->縮放與配置->比例 為100%", color="red")
         self.root.mainloop()
 
