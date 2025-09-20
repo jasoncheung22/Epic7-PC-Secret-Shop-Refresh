@@ -2,6 +2,7 @@
 
 ![Screenshot](screenshot.png)
 
+Demo / User Guide : https://youtu.be/rcPtGO7zkzk
 ## 項目介紹
 
 Epic7 自動刷新神秘商店工具，不鎖定滑鼠，Code基本上都是 AI 寫的，如果遇到 bug 請Create Issue。歡迎 fork 或 contribute，Give me a Star if you like it！
