@@ -32,8 +32,6 @@ Epic7 自動刷新神秘商店工具，不鎖定滑鼠，Code基本上都是 AI 
 
 # Epic7 PC Auto Mystic Shop Refresh
 
-![Screenshot](screenshot.png)
-
 ## About
 
 Epic7 automatic mystic shop refresh tool that doesn't lock your mouse. The code is basically all written by AI. Feel free to create issues if you encounter any bugs. Welcome to fork the project or contribute - if you like it, give me a star!
