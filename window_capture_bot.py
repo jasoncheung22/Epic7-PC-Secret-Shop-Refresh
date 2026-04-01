@@ -98,11 +98,12 @@ class WindowCaptureBot:
             with open("translations.json", "r", encoding="utf-8") as f:
                 self.translations = json.load(f)
         except Exception as e:
+            # 無法載入翻譯文件，使用默認錯誤訊息
             print(f"載入翻譯文件失敗: {e}")
             # 提供默認翻譯
             self.translations = {
-                "zh-hk": {"window_title": "E7 PC FULL AUTO v2.6"},
-                "en": {"window_title": "E7 PC FULL AUTO v2.6"}
+                "zh-hk": {"window_title": f"E7 PC FULL AUTO v{VERSION}"},
+                "en": {"window_title": f"E7 PC FULL AUTO v{VERSION}"}
             }
     
     def get_text(self, key):
@@ -119,7 +120,7 @@ class WindowCaptureBot:
         if selected in self.translations:
             self.current_lang = selected
             self.update_ui_texts()
-            self.log_message(f"語言已切換為: {selected}", color="blue")
+            self.log_message(self.get_text("log_language_changed").format(lang=selected), color="blue")
     
     def update_ui_texts(self):
         """更新UI文本"""
@@ -127,6 +128,7 @@ class WindowCaptureBot:
         self.root.title(self.get_text("window_title"))
         
         # 更新框架標題
+        self.lang_frame.config(text=self.get_text("language_selection"))
         self.window_frame.config(text=self.get_text("window_selection"))
         self.template_frame.config(text=self.get_text("template_selection"))
         self.stats_frame.config(text=self.get_text("statistics_info"))
@@ -171,11 +173,11 @@ class WindowCaptureBot:
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # 語言選擇區域
-        lang_frame = ttk.LabelFrame(main_frame, text=self.get_text("language_selection"), padding="5")
-        lang_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.lang_frame = ttk.LabelFrame(main_frame, text=self.get_text("language_selection"), padding="5")
+        self.lang_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         
         self.lang_var = tk.StringVar(value=self.current_lang)
-        lang_combo = ttk.Combobox(lang_frame, textvariable=self.lang_var, values=list(self.translations.keys()), state="readonly", width=10)
+        lang_combo = ttk.Combobox(self.lang_frame, textvariable=self.lang_var, values=list(self.translations.keys()), state="readonly", width=10)
         lang_combo.grid(row=0, column=0, padx=(0, 10))
         lang_combo.bind('<<ComboboxSelected>>', self.change_language)
         self.ui_controls.append(lang_combo)
@@ -449,19 +451,19 @@ class WindowCaptureBot:
         
         # ✅ 聖約書簽顏色和符號邏輯
         if covenant_rate < 3.8:
-            self.covenant_rate_label.config(text=f"⬇ {covenant_rate:.2f}%", foreground="red")
+            self.covenant_rate_label.config(text=f"v {covenant_rate:.2f}%", foreground="red")
         elif abs(covenant_rate - 3.8) < 0.01:  # 約等於3.8%
             self.covenant_rate_label.config(text=f"{covenant_rate:.2f}%", foreground="black")
         else:
-            self.covenant_rate_label.config(text=f"⬆ {covenant_rate:.2f}%", foreground="green")
+            self.covenant_rate_label.config(text=f"^ {covenant_rate:.2f}%", foreground="green")
         
         # ✅ 神秘書簽顏色和符號邏輯
         if mystic_rate < 1.0:
-            self.mystic_rate_label.config(text=f"⬇ {mystic_rate:.2f}%", foreground="red")
+            self.mystic_rate_label.config(text=f"v {mystic_rate:.2f}%", foreground="red")
         elif abs(mystic_rate - 1.0) < 0.01:  # 約等於1%
             self.mystic_rate_label.config(text=f"{mystic_rate:.2f}%", foreground="black")
         else:
-            self.mystic_rate_label.config(text=f"⬆ {mystic_rate:.2f}%", foreground="green")
+            self.mystic_rate_label.config(text=f"^ {mystic_rate:.2f}%", foreground="green")
     
     def reset_targets(self):
         """✅ 重置所有目標值輸入"""
@@ -500,11 +502,11 @@ class WindowCaptureBot:
             filename = "automation_summary.csv"
             file_exists = os.path.isfile(filename)
             
-            # ✅ CSV欄位定義 - 添加機率統計
+            # ✅ CSV欄位定義 - 使用固定的欄位名稱（中文），不隨語言改變
             fieldnames = [
-                self.get_text("csv_start_time"), self.get_text("csv_end_time"), self.get_text("csv_duration"),
-                self.get_text("csv_refresh_count"), self.get_text("csv_skystones"), self.get_text("csv_covenant"), self.get_text("csv_mystic"),
-                self.get_text("csv_friendship"), self.get_text("csv_gold"), self.get_text("csv_covenant_rate"), self.get_text("csv_mystic_rate")
+                '開始時間', '結束時間', '使用時間(HH:MM:SS)',
+                '刷新次數', '天空石消耗', '聖約書籤獲得', '神秘書籤獲得',
+                '友情書籤獲得', '金幣消耗', '聖約出現率(%)', '神秘出現率(%)'
             ]
             
             with open(filename, mode='a', newline='', encoding='utf-8-sig') as csvfile:
@@ -1304,13 +1306,26 @@ class WindowCaptureBot:
 
 if __name__ == "__main__":
     try:
+        # 載入翻譯以用於錯誤訊息
+        translations = {}
+        try:
+            with open("translations.json", "r", encoding="utf-8") as f:
+                translations = json.load(f)
+        except:
+            pass  # 如果載入失敗，使用默認值
+        
         # 檢查 image 資料夾是否存在
         if not os.path.exists("image"):
             os.makedirs("image")
-            print("已創建 image 資料夾，請將 covenant.png, mystic.png, friend.png 放入此資料夾")
+            lang = "zh-hk"  # 默認語言
+            message = translations.get(lang, {}).get("log_image_folder_created", "已創建 image 資料夾，請將 covenant.png, mystic.png, friend.png 放入此資料夾")
+            print(message)
         
         app = WindowCaptureBot()
         app.run()
     except Exception as e:
-        print(f"程序運行時發生錯誤: {e}")
-        input("按 Enter 鍵退出...")
+        lang = "zh-hk"  # 默認語言
+        error_msg = translations.get(lang, {}).get("log_program_error", f"程序運行時發生錯誤: {e}")
+        print(error_msg)
+        input_msg = translations.get(lang, {}).get("input_press_enter", "按 Enter 鍵退出...")
+        input(input_msg)

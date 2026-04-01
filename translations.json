@@ -110,7 +110,11 @@
     "csv_friendship": "友情書籤獲得",
     "csv_gold": "金幣消耗",
     "csv_covenant_rate": "聖約出現率(%)",
-    "csv_mystic_rate": "神秘出現率(%)"
+    "log_language_changed": "語言已切換為: {lang}",
+    "log_translation_load_error": "載入翻譯文件失敗: {error}",
+    "log_image_folder_created": "已創建 image 資料夾，請將 covenant.png, mystic.png, friend.png 放入此資料夾",
+    "log_program_error": "程序運行時發生錯誤: {error}",
+    "input_press_enter": "按 Enter 鍵退出..."
   },
   "en": {
     "window_title": "E7 PC FULL AUTO v{version}",
@@ -223,6 +227,10 @@
     "csv_friendship": "Friendship Bookmarks Obtained",
     "csv_gold": "Gold Consumed",
     "csv_covenant_rate": "Covenant Rate (%)",
-    "csv_mystic_rate": "Mystic Rate (%)"
+    "log_language_changed": "Language switched to: {lang}",
+    "log_translation_load_error": "Failed to load translation file: {error}",
+    "log_image_folder_created": "Created image folder, please place covenant.png, mystic.png, friend.png in this folder",
+    "log_program_error": "Program runtime error: {error}",
+    "input_press_enter": "Press Enter to exit..."
   }
 }
