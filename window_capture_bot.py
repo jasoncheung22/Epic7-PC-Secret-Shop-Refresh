@@ -15,11 +15,21 @@ import json
 import csv
 from datetime import datetime
 
+# Version constant for easy updates
+# To update version: Change this constant and rebuild
+VERSION = "2.7"
+
 class WindowCaptureBot:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("E7 PC FULL AUTO v2.6")
         self.root.geometry("1000x900")  # 增加高度以容納新功能
+        
+        # 載入翻譯
+        self.load_translations()
+        self.current_lang = "zh-hk"
+        
+        # 設置視窗標題
+        self.root.title(self.get_text("window_title"))
         
         # 狀態變數
         self.target_window = None
@@ -81,20 +91,104 @@ class WindowCaptureBot:
         
         # 載入設定
         self.load_settings()
+    
+    def load_translations(self):
+        """載入翻譯文件"""
+        try:
+            with open("translations.json", "r", encoding="utf-8") as f:
+                self.translations = json.load(f)
+        except Exception as e:
+            print(f"載入翻譯文件失敗: {e}")
+            # 提供默認翻譯
+            self.translations = {
+                "zh-hk": {"window_title": "E7 PC FULL AUTO v2.6"},
+                "en": {"window_title": "E7 PC FULL AUTO v2.6"}
+            }
+    
+    def get_text(self, key):
+        """獲取翻譯文本"""
+        text = self.translations.get(self.current_lang, {}).get(key, key)
+        # Auto-format version placeholders
+        if "{version}" in text:
+            text = text.format(version=VERSION)
+        return text
+    
+    def change_language(self, event=None):
+        """切換語言"""
+        selected = self.lang_var.get()
+        if selected in self.translations:
+            self.current_lang = selected
+            self.update_ui_texts()
+            self.log_message(f"語言已切換為: {selected}", color="blue")
+    
+    def update_ui_texts(self):
+        """更新UI文本"""
+        # 更新視窗標題
+        self.root.title(self.get_text("window_title"))
         
+        # 更新框架標題
+        self.window_frame.config(text=self.get_text("window_selection"))
+        self.template_frame.config(text=self.get_text("template_selection"))
+        self.stats_frame.config(text=self.get_text("statistics_info"))
+        self.auto_count_frame.config(text=self.get_text("auto_count_targets"))
+        self.threshold_frame.config(text=self.get_text("match_settings"))
+        self.status_frame.config(text=self.get_text("status_info"))
+        
+        # 更新按鈕
+        self.refresh_btn.config(text=self.get_text("refresh_windows"))
+        self.start_button.config(text=self.get_text("start_automation"))
+        self.stop_button.config(text=self.get_text("stop_automation"))
+        self.test_btn.config(text=self.get_text("test_capture"))
+        self.save_btn.config(text=self.get_text("save_settings"))
+        self.reset_btn.config(text=self.get_text("reset_statistics"))
+        self.reset_targets_btn.config(text=self.get_text("reset_all_targets"))
+        
+        # 更新標籤
+        self.threshold_label.config(text=self.get_text("match_threshold"))
+        self.auto_count_label.config(text=self.get_text("auto_count_label"))
+        self.covenant_target_label.config(text=self.get_text("covenant_target_label"))
+        self.mystic_target_label.config(text=self.get_text("mystic_target_label"))
+        
+        # 更新統計標籤
+        self.skystone_label_text.config(text=self.get_text("skystones_consumed"))
+        self.gold_label_text.config(text=self.get_text("gold_consumed"))
+        self.covenant_label_text.config(text=self.get_text("covenant_bookmarks"))
+        self.mystic_label_text.config(text=self.get_text("mystic_bookmarks"))
+        self.friendship_label_text.config(text=self.get_text("friendship_bookmarks"))
+        self.covenant_rate_label_text.config(text=self.get_text("covenant_rate"))
+        self.mystic_rate_label_text.config(text=self.get_text("mystic_rate"))
+        self.current_count_label_text.config(text=self.get_text("refresh_count"))
+        
+        # 更新複選框
+        for i, checkbox in enumerate(self.template_checkboxes):
+            if i < 3:  # 只更新前3個
+                checkbox.config(text=self.get_text(f"{self.template_images[i].replace('.png', '')}_checkbox"))
+    
     def setup_ui(self):
         """設置用戶界面"""
         # 主框架
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # 視窗選擇區域
-        window_frame = ttk.LabelFrame(main_frame, text="視窗選擇", padding="5")
-        window_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        # 語言選擇區域
+        lang_frame = ttk.LabelFrame(main_frame, text=self.get_text("language_selection"), padding="5")
+        lang_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         
-        refresh_btn = ttk.Button(window_frame, text="刷新視窗列表", command=self.refresh_windows)
+        self.lang_var = tk.StringVar(value=self.current_lang)
+        lang_combo = ttk.Combobox(lang_frame, textvariable=self.lang_var, values=list(self.translations.keys()), state="readonly", width=10)
+        lang_combo.grid(row=0, column=0, padx=(0, 10))
+        lang_combo.bind('<<ComboboxSelected>>', self.change_language)
+        self.ui_controls.append(lang_combo)
+        
+        # 視窗選擇區域
+        window_frame = ttk.LabelFrame(main_frame, text=self.get_text("window_selection"), padding="5")
+        window_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.window_frame = window_frame
+        
+        refresh_btn = ttk.Button(window_frame, text=self.get_text("refresh_windows"), command=self.refresh_windows)
         refresh_btn.grid(row=0, column=0, padx=(0, 10))
         self.ui_controls.append(refresh_btn)
+        self.refresh_btn = refresh_btn
         
         self.window_var = tk.StringVar()
         self.window_combo = ttk.Combobox(window_frame, textvariable=self.window_var, width=50, state="readonly")
@@ -103,27 +197,32 @@ class WindowCaptureBot:
         self.ui_controls.append(self.window_combo)
         
         # 模板圖片多選區域
-        template_frame = ttk.LabelFrame(main_frame, text="模板圖片選擇", padding="5")
-        template_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        template_frame = ttk.LabelFrame(main_frame, text=self.get_text("template_selection"), padding="5")
+        template_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.template_frame = template_frame
         
         # 創建模板圖片多選UI
         self.setup_template_selection(template_frame)
         
         # ✅ 統計顯示區域
-        stats_frame = ttk.LabelFrame(main_frame, text="統計資訊", padding="5")
-        stats_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        stats_frame = ttk.LabelFrame(main_frame, text=self.get_text("statistics_info"), padding="5")
+        stats_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.stats_frame = stats_frame
         self.setup_statistics_display(stats_frame)
         
         # ✅ 自動次數設定區域（修改為包含目標值）
-        auto_count_frame = ttk.LabelFrame(main_frame, text="自動次數與目標設定", padding="5")
-        auto_count_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        auto_count_frame = ttk.LabelFrame(main_frame, text=self.get_text("auto_count_targets"), padding="5")
+        auto_count_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.auto_count_frame = auto_count_frame
         self.setup_auto_count_ui(auto_count_frame)
         
         # 匹配閾值設定
-        threshold_frame = ttk.LabelFrame(main_frame, text="匹配設定", padding="5")
-        threshold_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        threshold_frame = ttk.LabelFrame(main_frame, text=self.get_text("match_settings"), padding="5")
+        threshold_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.threshold_frame = threshold_frame
         
-        ttk.Label(threshold_frame, text="匹配閾值:").grid(row=0, column=0, padx=(0, 5))
+        self.threshold_label = ttk.Label(threshold_frame, text=self.get_text("match_threshold"))
+        self.threshold_label.grid(row=0, column=0, padx=(0, 5))
         self.threshold_var = tk.StringVar(value="0.8")
         threshold_entry = ttk.Entry(threshold_frame, textvariable=self.threshold_var, width=10)
         threshold_entry.grid(row=0, column=1, padx=(0, 20))
@@ -131,30 +230,34 @@ class WindowCaptureBot:
         
         # 控制按鈕
         control_frame = ttk.Frame(main_frame)
-        control_frame.grid(row=5, column=0, columnspan=2, pady=(0, 10))
+        control_frame.grid(row=6, column=0, columnspan=2, pady=(0, 10))
         
-        self.start_button = ttk.Button(control_frame, text="開始自動化", command=self.start_capture)
+        self.start_button = ttk.Button(control_frame, text=self.get_text("start_automation"), command=self.start_capture)
         self.start_button.grid(row=0, column=0, padx=(0, 10))
         
-        self.stop_button = ttk.Button(control_frame, text="停止自動化", command=self.stop_capture, state="disabled")
+        self.stop_button = ttk.Button(control_frame, text=self.get_text("stop_automation"), command=self.stop_capture, state="disabled")
         self.stop_button.grid(row=0, column=1, padx=(0, 10))
         
-        test_btn = ttk.Button(control_frame, text="測試捕獲", command=self.test_capture)
+        test_btn = ttk.Button(control_frame, text=self.get_text("test_capture"), command=self.test_capture)
         test_btn.grid(row=0, column=2, padx=(0, 10))
         self.ui_controls.append(test_btn)
+        self.test_btn = test_btn
         
-        save_btn = ttk.Button(control_frame, text="保存設定", command=self.save_settings)
+        save_btn = ttk.Button(control_frame, text=self.get_text("save_settings"), command=self.save_settings)
         save_btn.grid(row=0, column=3, padx=(0, 10))
         self.ui_controls.append(save_btn)
+        self.save_btn = save_btn
         
         # ✅ 重置統計按鈕
-        reset_btn = ttk.Button(control_frame, text="重置統計", command=self.reset_statistics)
+        reset_btn = ttk.Button(control_frame, text=self.get_text("reset_statistics"), command=self.reset_statistics)
         reset_btn.grid(row=0, column=4, padx=(0, 10))
         self.ui_controls.append(reset_btn)
+        self.reset_btn = reset_btn
         
         # 狀態顯示
-        status_frame = ttk.LabelFrame(main_frame, text="狀態資訊", padding="5")
-        status_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        status_frame = ttk.LabelFrame(main_frame, text=self.get_text("status_info"), padding="5")
+        status_frame.grid(row=7, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        self.status_frame = status_frame
         
         self.status_text = tk.Text(status_frame, height=15, width=90)
         scrollbar = ttk.Scrollbar(status_frame, orient="vertical", command=self.status_text.yview)
@@ -168,7 +271,7 @@ class WindowCaptureBot:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(6, weight=1)
+        main_frame.rowconfigure(7, weight=1)
         window_frame.columnconfigure(1, weight=1)
         status_frame.columnconfigure(0, weight=1)
         status_frame.rowconfigure(0, weight=1)
@@ -177,6 +280,8 @@ class WindowCaptureBot:
         """設置模板圖片選擇UI - 排除文字模板"""
         # ✅ 只為前3個模板(covenant, mystic, friend)創建UI
         display_templates = self.template_images[:3]  # 只顯示前3個
+        
+        self.template_checkboxes = []  # 存儲複選框引用
         
         for i, img_name in enumerate(display_templates):
             # 創建每個圖片的框架
@@ -197,23 +302,24 @@ class WindowCaptureBot:
                     img_label.grid(row=0, column=0, padx=(0, 5))
                     
                 except Exception as e:
-                    self.log_message(f"載入圖片 {img_name} 失敗: {e}")
-                    placeholder = ttk.Label(img_frame, text="圖片\n載入\n失敗", width=10)
+                    self.log_message(self.get_text("log_image_load_failed").format(name=img_name, error=e))
+                    placeholder = ttk.Label(img_frame, text=self.get_text("log_placeholder_text"), width=10)
                     placeholder.grid(row=0, column=0, padx=(0, 5))
                     self.template_photoimgs.append(None)
             else:
-                placeholder = ttk.Label(img_frame, text="圖片\n未找到", width=10)
+                placeholder = ttk.Label(img_frame, text=self.get_text("log_placeholder_not_found"), width=10)
                 placeholder.grid(row=0, column=0, padx=(0, 5))
                 self.template_photoimgs.append(None)
             
             # 複選框 - friend.png 默認不勾選
             default_value = True if img_name != "friend.png" else False
             var = tk.BooleanVar(value=default_value)
-            checkbox = ttk.Checkbutton(img_frame, text=img_name.replace('.png', ''), variable=var)
+            checkbox = ttk.Checkbutton(img_frame, text=self.get_text(f"{img_name.replace('.png', '')}_checkbox"), variable=var)
             checkbox.grid(row=1, column=0)
             
             self.template_vars.append(var)
             self.ui_controls.append(checkbox)
+            self.template_checkboxes.append(checkbox)
 
     def setup_statistics_display(self, parent_frame):
         """✅ 設置統計顯示UI - 包含機率統計"""
@@ -221,11 +327,13 @@ class WindowCaptureBot:
         row1_frame = ttk.Frame(parent_frame)
         row1_frame.grid(row=0, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 5))
         
-        ttk.Label(row1_frame, text="天空石消耗:", font=("Arial", 10)).grid(row=0, column=0, padx=(0, 5))
+        self.skystone_label_text = ttk.Label(row1_frame, text=self.get_text("skystones_consumed"), font=("Arial", 10))
+        self.skystone_label_text.grid(row=0, column=0, padx=(0, 5))
         self.skystone_label = ttk.Label(row1_frame, text="0", font=("Arial", 10, "bold"), foreground="purple")
         self.skystone_label.grid(row=0, column=1, padx=(0, 20))
         
-        ttk.Label(row1_frame, text="金幣消耗:", font=("Arial", 10)).grid(row=0, column=2, padx=(0, 5))
+        self.gold_label_text = ttk.Label(row1_frame, text=self.get_text("gold_consumed"), font=("Arial", 10))
+        self.gold_label_text.grid(row=0, column=2, padx=(0, 5))
         self.gold_label = ttk.Label(row1_frame, text="0", font=("Arial", 10, "bold"), foreground="orange")
         self.gold_label.grid(row=0, column=3, padx=(0, 20))
         
@@ -233,15 +341,18 @@ class WindowCaptureBot:
         row2_frame = ttk.Frame(parent_frame)
         row2_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(5, 0))
         
-        ttk.Label(row2_frame, text="聖約書簽:", font=("Arial", 10)).grid(row=0, column=0, padx=(0, 5))
+        self.covenant_label_text = ttk.Label(row2_frame, text=self.get_text("covenant_bookmarks"), font=("Arial", 10))
+        self.covenant_label_text.grid(row=0, column=0, padx=(0, 5))
         self.covenant_label = ttk.Label(row2_frame, text="0", font=("Arial", 10, "bold"), foreground="blue")
         self.covenant_label.grid(row=0, column=1, padx=(0, 15))
         
-        ttk.Label(row2_frame, text="神秘書簽:", font=("Arial", 10)).grid(row=0, column=2, padx=(0, 5))
+        self.mystic_label_text = ttk.Label(row2_frame, text=self.get_text("mystic_bookmarks"), font=("Arial", 10))
+        self.mystic_label_text.grid(row=0, column=2, padx=(0, 5))
         self.mystic_label = ttk.Label(row2_frame, text="0", font=("Arial", 10, "bold"), foreground="red")
         self.mystic_label.grid(row=0, column=3, padx=(0, 15))
         
-        ttk.Label(row2_frame, text="友情書簽:", font=("Arial", 10)).grid(row=0, column=4, padx=(0, 5))
+        self.friendship_label_text = ttk.Label(row2_frame, text=self.get_text("friendship_bookmarks"), font=("Arial", 10))
+        self.friendship_label_text.grid(row=0, column=4, padx=(0, 5))
         self.friendship_label = ttk.Label(row2_frame, text="0", font=("Arial", 10, "bold"), foreground="green")
         self.friendship_label.grid(row=0, column=5)
         
@@ -249,16 +360,19 @@ class WindowCaptureBot:
         row3_frame = ttk.Frame(parent_frame)
         row3_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 5))
         
-        ttk.Label(row3_frame, text="聖約書簽出現率:", font=("Arial", 10)).grid(row=0, column=0, padx=(0, 5))
+        self.covenant_rate_label_text = ttk.Label(row3_frame, text=self.get_text("covenant_rate"), font=("Arial", 10))
+        self.covenant_rate_label_text.grid(row=0, column=0, padx=(0, 5))
         self.covenant_rate_label = ttk.Label(row3_frame, text="0.00%", font=("Arial", 10, "bold"))
         self.covenant_rate_label.grid(row=0, column=1, padx=(0, 20))
         
-        ttk.Label(row3_frame, text="神秘書簽出現率:", font=("Arial", 10)).grid(row=0, column=2, padx=(0, 5))
+        self.mystic_rate_label_text = ttk.Label(row3_frame, text=self.get_text("mystic_rate"), font=("Arial", 10))
+        self.mystic_rate_label_text.grid(row=0, column=2, padx=(0, 5))
         self.mystic_rate_label = ttk.Label(row3_frame, text="0.00%", font=("Arial", 10, "bold"))
         self.mystic_rate_label.grid(row=0, column=3, padx=(0, 20))
         
         # 已刷新次數顯示
-        ttk.Label(row3_frame, text="已刷新次數:", font=("Arial", 10)).grid(row=0, column=4, padx=(20, 5))
+        self.current_count_label_text = ttk.Label(row3_frame, text=self.get_text("refresh_count"), font=("Arial", 10))
+        self.current_count_label_text.grid(row=0, column=4, padx=(20, 5))
         self.current_count_label = ttk.Label(row3_frame, text="0", font=("Arial", 10, "bold"), foreground="darkgreen")
         self.current_count_label.grid(row=0, column=5, padx=(0, 10))
     
@@ -268,7 +382,8 @@ class WindowCaptureBot:
         row1_frame = ttk.Frame(parent_frame)
         row1_frame.grid(row=0, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(0, 10))
         
-        ttk.Label(row1_frame, text="自動次數 (空白=無限):", font=("Arial", 10)).grid(row=0, column=0, padx=(0, 5))
+        self.auto_count_label = ttk.Label(row1_frame, text=self.get_text("auto_count_label"), font=("Arial", 10))
+        self.auto_count_label.grid(row=0, column=0, padx=(0, 5))
         
         self.auto_count_var = tk.StringVar()
         auto_count_entry = ttk.Entry(row1_frame, textvariable=self.auto_count_var, width=10)
@@ -283,14 +398,16 @@ class WindowCaptureBot:
         row2_frame = ttk.Frame(parent_frame)
         row2_frame.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(0, 5))
         
-        ttk.Label(row2_frame, text="聖約書簽目標 (空白=無限):", font=("Arial", 10)).grid(row=0, column=0, padx=(0, 5))
+        self.covenant_target_label = ttk.Label(row2_frame, text=self.get_text("covenant_target_label"), font=("Arial", 10))
+        self.covenant_target_label.grid(row=0, column=0, padx=(0, 5))
         
         self.covenant_target_var = tk.StringVar()
         covenant_target_entry = ttk.Entry(row2_frame, textvariable=self.covenant_target_var, width=10)
         covenant_target_entry.grid(row=0, column=1, padx=(0, 20))
         self.ui_controls.append(covenant_target_entry)
         
-        ttk.Label(row2_frame, text="神秘書簽目標 (空白=無限):", font=("Arial", 10)).grid(row=0, column=2, padx=(20, 5))
+        self.mystic_target_label = ttk.Label(row2_frame, text=self.get_text("mystic_target_label"), font=("Arial", 10))
+        self.mystic_target_label.grid(row=0, column=2, padx=(20, 5))
         
         self.mystic_target_var = tk.StringVar()
         mystic_target_entry = ttk.Entry(row2_frame, textvariable=self.mystic_target_var, width=10)
@@ -298,9 +415,9 @@ class WindowCaptureBot:
         self.ui_controls.append(mystic_target_entry)
         
         # ✅ 重置所有目標按鈕
-        reset_targets_btn = ttk.Button(row2_frame, text="重置所有目標", command=self.reset_targets)
-        reset_targets_btn.grid(row=0, column=4, padx=(20, 0))
-        self.ui_controls.append(reset_targets_btn)
+        self.reset_targets_btn = ttk.Button(row2_frame, text=self.get_text("reset_all_targets"), command=self.reset_targets)
+        self.reset_targets_btn.grid(row=0, column=4, padx=(20, 0))
+        self.ui_controls.append(self.reset_targets_btn)
     
     def update_auto_count_display(self):
         """✅ 更新自動次數顯示"""
@@ -351,7 +468,7 @@ class WindowCaptureBot:
         self.auto_count_var.set("")
         self.covenant_target_var.set("")
         self.mystic_target_var.set("")
-        self.log_message("已重置所有目標值設定", color="gray")
+        self.log_message(self.get_text("log_targets_reset"), color="gray")
     
     def reset_statistics(self):
         """✅ 重置統計數據"""
@@ -366,7 +483,7 @@ class WindowCaptureBot:
         self.auto_current_count = 0
         self.update_statistics_display()
         self.update_auto_count_display()
-        self.log_message("統計數據和計數已重置", color="gray")
+        self.log_message(self.get_text("log_statistics_reset"), color="gray")
     
     def toggle_ui_controls(self, enabled):
         """✅ 啟用/禁用UI控件 - 修正版"""
@@ -385,9 +502,9 @@ class WindowCaptureBot:
             
             # ✅ CSV欄位定義 - 添加機率統計
             fieldnames = [
-                '開始時間', '結束時間', '使用時間(HH:MM:SS)',
-                '刷新次數', '天空石消耗', '聖約書籤獲得', '神秘書籤獲得',
-                '友情書籤獲得', '金幣消耗', '聖約出現率(%)', '神秘出現率(%)'
+                self.get_text("csv_start_time"), self.get_text("csv_end_time"), self.get_text("csv_duration"),
+                self.get_text("csv_refresh_count"), self.get_text("csv_skystones"), self.get_text("csv_covenant"), self.get_text("csv_mystic"),
+                self.get_text("csv_friendship"), self.get_text("csv_gold"), self.get_text("csv_covenant_rate"), self.get_text("csv_mystic_rate")
             ]
             
             with open(filename, mode='a', newline='', encoding='utf-8-sig') as csvfile:
@@ -429,10 +546,10 @@ class WindowCaptureBot:
                 
                 writer.writerow(row)
             
-            self.log_message(f"📊 自動化總結已匯出至 {filename}", color="green")
+            self.log_message(self.get_text("log_csv_exported").format(filename=filename), color="green")
             
         except Exception as e:
-            self.log_message(f"匯出CSV時發生錯誤: {e}", color="red")
+            self.log_message(self.get_text("log_csv_export_error").format(error=e), color="red")
 
     # 以下是其他原有方法，保持不變...
     def load_template_images(self):
@@ -447,18 +564,18 @@ class WindowCaptureBot:
                     if template is not None:
                         self.loaded_templates.append(template)
                         if img_name.startswith("text"):
-                            self.log_message(f"載入文字模板: {img_name}")
+                            self.log_message(self.get_text("log_text_template_loaded").format(name=img_name))
                         else:
-                            self.log_message(f"載入模板圖片: {img_name}")
+                            self.log_message(self.get_text("log_template_loaded").format(name=img_name))
                     else:
                         self.loaded_templates.append(None)
-                        self.log_message(f"載入模板圖片失敗: {img_name}")
+                        self.log_message(self.get_text("log_template_load_failed").format(name=img_name))
                 except Exception as e:
                     self.loaded_templates.append(None)
-                    self.log_message(f"載入模板圖片錯誤 {img_name}: {e}")
+                    self.log_message(self.get_text("log_template_load_error").format(name=img_name, error=e))
             else:
                 self.loaded_templates.append(None)
-                self.log_message(f"模板圖片不存在: {img_path}")
+                self.log_message(self.get_text("log_template_not_found").format(path=img_path))
 
     def log_message(self, message, color="black"):
         """✅ 記錄訊息到狀態文本框（支援顏色）"""
@@ -500,7 +617,7 @@ class WindowCaptureBot:
         window_titles = [f"{hwnd}: {title}" for hwnd, title in windows]
         self.window_combo['values'] = window_titles
         
-        self.log_message(f"找到 {len(windows)} 個視窗")
+        self.log_message(self.get_text("log_windows_found").format(count=len(windows)))
     
     def on_window_selected(self, event):
         """當選擇視窗時的回調函數"""
@@ -509,7 +626,7 @@ class WindowCaptureBot:
             hwnd = int(selected.split(':')[0])
             self.target_hwnd = hwnd
             self.target_window = win32gui.GetWindowText(hwnd)
-            self.log_message(f"選擇目標視窗: {self.target_window}")
+            self.log_message(self.get_text("log_window_selected").format(window=self.target_window))
     
     def capture_window(self, hwnd):
         """捕獲指定視窗的畫面"""
@@ -550,7 +667,7 @@ class WindowCaptureBot:
             else:
                 return None
         except Exception as e:
-            self.log_message(f"捕獲視窗時發生錯誤: {e}")
+            self.log_message(self.get_text("log_capture_error").format(error=e))
             return None
 
     def find_template_in_image(self, image, template):
@@ -569,7 +686,7 @@ class WindowCaptureBot:
                 return None, max_val
                 
         except Exception as e:
-            self.log_message(f"模板匹配時發生錯誤: {e}")
+            self.log_message(self.get_text("log_template_match_error").format(error=e))
             return None, 0
     
     def click_at_position(self, hwnd, x, y, click_time = 3):
@@ -597,7 +714,7 @@ class WindowCaptureBot:
             return True
             
         except Exception as e:
-            self.log_message(f"點擊錯誤: {e}")
+            self.log_message(self.get_text("log_click_error").format(error=e))
             return False
 
     def simulate_vertical_scroll(self, hwnd, start_x, start_y, distance=100):
@@ -643,7 +760,7 @@ class WindowCaptureBot:
                 win32gui.PostMessage(hwnd, win32con.WM_LBUTTONUP, 0, lParam_end)
             except:
                 pass
-            self.log_message(f"拖動滾動錯誤: {e}")
+            self.log_message(self.get_text("log_scroll_error").format(error=e))
             return False
 
     def resize_target_window(self, hwnd):
@@ -653,21 +770,21 @@ class WindowCaptureBot:
             time.sleep(0.3)  # 等待還原完成
             left, top, right, bottom = win32gui.GetWindowRect(hwnd)
             win32gui.MoveWindow(hwnd, left, top, 640, 360, True)
-            self.log_message("目標視窗已調整為640x360")
+            self.log_message(self.get_text("log_window_resize"))
             return True
         except Exception as e:
-            self.log_message(f"調整視窗大小時發生錯誤: {e}")
+            self.log_message(self.get_text("log_window_resize_error").format(error=e))
             return False
     
     def capture_loop(self):
         """✅ 主要的自動化循環 - 加入目標值停止判斷"""
         # 調整視窗大小
         if not self.resize_target_window(self.target_hwnd):
-            self.log_message("無法調整視窗大小，停止自動化")
+            self.log_message(self.get_text("error_window_resize_failed"))
             self.stop_capture()
             return
         
-        self.log_message("自動化進行時滑鼠不要進入目標視窗，會影響點擊準確度!!!", color="red")
+        self.log_message(self.get_text("log_mouse_warning"), color="red")
         time.sleep(1)
         
         while self.is_running:
@@ -681,14 +798,14 @@ class WindowCaptureBot:
                         selected_names.append(self.template_images[i])
                 
                 if not selected_templates:
-                    self.log_message("沒有選中的模板圖片")
+                    self.log_message(self.get_text("log_no_selected_templates"))
                     time.sleep(1)
                     continue
                 
                 # 第一次捕獲和檢測
                 captured_image = self.capture_window(self.target_hwnd)
                 if captured_image is None:
-                    self.log_message("無法捕獲視窗畫面")
+                    self.log_message(self.get_text("log_capture_failed"))
                     time.sleep(1)
                     continue
                     
@@ -700,14 +817,14 @@ class WindowCaptureBot:
                     match_loc, confidence = self.find_template_in_image(captured_image, template)
                     if match_loc is not None:
                         match_x, match_y = match_loc
-                        self.log_message(f"找到匹配圖片 {name} 於位置 ({match_x}, {match_y}), 信心度: {confidence:.3f}")
+                        self.log_message(self.get_text("log_match_found").format(name=name, x=match_x, y=match_y, confidence=confidence))
                         
                         # ✅ 檢查點擊狀態
                         is_clickable, status = self.check_clickable_status(captured_image, match_x, match_y)
                         
                         if is_clickable:
                             # 可以點擊 - 執行原本邏輯
-                            self.log_message(f"狀態檢查: {status} - 可以點擊", color="green")
+                            self.log_message(self.get_text("log_status_clickable").format(status=status), color="green")
                             
                             # 點擊匹配位置
                             click_x = match_x + 280
@@ -727,22 +844,22 @@ class WindowCaptureBot:
                             if name == "covenant.png":
                                 self.stats['covenant_bookmarks'] += 5
                                 self.stats['gold_consumed'] += 184000
-                                self.log_message("找到聖約書簽！", color="blue")
+                                self.log_message(self.get_text("log_covenant_found"), color="blue")
                             elif name == "mystic.png":
                                 self.stats['mystic_bookmarks'] += 50
                                 self.stats['gold_consumed'] += 280000
-                                self.log_message("找到神秘書簽！", color="red")
+                                self.log_message(self.get_text("log_mystic_found"), color="red")
                             elif name == "friend.png":
                                 self.stats['friendship_bookmarks'] += 5
                                 self.stats['gold_consumed'] += 18000
-                                self.log_message("找到友情書簽！", color="green")
+                                self.log_message(self.get_text("log_friend_found"), color="green")
                             
                             # 更新統計顯示
                             self.update_statistics_display()
                             time.sleep(1)
                         else:
                             # 不能點擊 - 記錄已購買
-                            self.log_message(f"狀態檢查: {status} - 已購買，跳過", color="orange")
+                            self.log_message(self.get_text("log_status_not_clickable").format(status=status), color="orange")
                 
                 if not self.is_running:
                     break
@@ -769,14 +886,14 @@ class WindowCaptureBot:
                     match_loc, confidence = self.find_template_in_image(captured_image2, template)
                     if match_loc is not None:
                         match_x, match_y = match_loc
-                        self.log_message(f"滑動後找到匹配圖片 {name} 於位置 ({match_x}, {match_y})")
+                        self.log_message(self.get_text("log_scroll_match_found").format(name=name, x=match_x, y=match_y))
                         
                         # ✅ 檢查點擊狀態
                         is_clickable, status = self.check_clickable_status(captured_image2, match_x, match_y)
                         
                         if is_clickable:
                             # 執行相同的點擊邏輯...
-                            self.log_message(f"滑動後狀態檢查: {status} - 可以點擊", color="green")
+                            self.log_message(self.get_text("log_scroll_status_clickable").format(status=status), color="green")
                             # 點擊匹配位置
                             click_x = match_x + 280
                             click_y = match_y + 25
@@ -795,22 +912,22 @@ class WindowCaptureBot:
                             if name == "covenant.png":
                                 self.stats['covenant_bookmarks'] += 5
                                 self.stats['gold_consumed'] += 184000
-                                self.log_message("找到聖約書簽！", color="blue")
+                                self.log_message(self.get_text("log_covenant_found"), color="blue")
                             elif name == "mystic.png":
                                 self.stats['mystic_bookmarks'] += 50
                                 self.stats['gold_consumed'] += 280000
-                                self.log_message("找到神秘書簽！", color="red")
+                                self.log_message(self.get_text("log_mystic_found"), color="red")
                             elif name == "friend.png":
                                 self.stats['friendship_bookmarks'] += 5
                                 self.stats['gold_consumed'] += 18000
-                                self.log_message("找到友情書簽！", color="green")
+                                self.log_message(self.get_text("log_friend_found"), color="green")
                             
                             # 更新統計顯示
                             self.update_statistics_display()
                             time.sleep(1)
                             break
                         else:
-                            self.log_message(f"滑動後狀態檢查: {status} - 已購買，跳過", color="orange")
+                            self.log_message(self.get_text("log_scroll_status_not_clickable").format(status=status), color="orange")
                 
                 self.auto_current_count += 1
                 
@@ -845,7 +962,7 @@ class WindowCaptureBot:
                             target_messages.append(f"神秘書簽達標 ({self.stats['mystic_bookmarks']}/{mystic_target})")
                     
                     if target_reached:
-                        self.log_message(f"✅ 達成目標條件：{'; '.join(target_messages)}，自動停止", color="green")
+                        self.log_message(self.get_text("log_target_reached").format(messages='; '.join(target_messages)), color="green")
                         self.stop_capture()
                         break
                         
@@ -874,25 +991,25 @@ class WindowCaptureBot:
                 time.sleep(2)
                     
             except Exception as e:
-                self.log_message(f"自動化循環中發生錯誤: {e}")
+                self.log_message(self.get_text("log_automation_loop_error").format(error=e))
                 time.sleep(1)
 
     def start_capture(self):
         """✅ 開始自動化（記錄開始時間並重置統計）"""
         if not self.target_hwnd:
-            messagebox.showerror("錯誤", "請先選擇目標視窗")
+            messagebox.showerror(self.get_text("error_no_window_selected"), self.get_text("error_no_window_selected"))
             return
         
         # 檢查是否有選中的模板
         has_selected = any(var.get() for var in self.template_vars)
         if not has_selected:
-            messagebox.showerror("錯誤", "請至少選擇一個模板圖片")
+            messagebox.showerror(self.get_text("error_no_templates_selected"), self.get_text("error_no_templates_selected"))
             return
         
         try:
             self.match_threshold = float(self.threshold_var.get())
         except ValueError:
-            messagebox.showerror("錯誤", "請輸入有效的匹配閾值")
+            messagebox.showerror(self.get_text("error_invalid_threshold"), self.get_text("error_invalid_threshold"))
             return
         
         # ✅ 設定自動次數限制
@@ -900,12 +1017,12 @@ class WindowCaptureBot:
             auto_count_text = self.auto_count_var.get().strip()
             if auto_count_text == "" or auto_count_text == "0":
                 self.auto_max_count = None  # 無限
-                self.log_message("設定為無限次數模式")
+                self.log_message(self.get_text("log_infinite_mode"))
             else:
                 self.auto_max_count = int(auto_count_text)
-                self.log_message(f"設定最大自動次數: {self.auto_max_count}")
+                self.log_message(self.get_text("log_max_auto_count").format(count=self.auto_max_count))
         except ValueError:
-            messagebox.showerror("錯誤", "請輸入有效的自動次數（數字或留空）")
+            messagebox.showerror(self.get_text("error_invalid_auto_count"), self.get_text("error_invalid_auto_count"))
             return
         
         # ✅ 重置統計資訊和計數器
@@ -922,7 +1039,7 @@ class WindowCaptureBot:
         # 更新顯示
         self.update_statistics_display()
         self.update_auto_count_display()
-        self.log_message("統計資訊已自動重置", color="gray")
+        self.log_message(self.get_text("log_statistics_auto_reset"), color="gray")
         
         self.is_running = True
         
@@ -936,9 +1053,9 @@ class WindowCaptureBot:
         self.stop_button.config(state="normal")
         
         if self.auto_max_count is not None:
-            self.log_message(f"🚀 開始自動化流程（限制 {self.auto_max_count} 次）...")
+            self.log_message(self.get_text("log_start_automation_limited").format(count=self.auto_max_count))
         else:
-            self.log_message("🚀 開始自動化流程（無限次數）...")
+            self.log_message(self.get_text("log_start_automation_unlimited"))
 
     
     def stop_capture(self):
@@ -965,9 +1082,9 @@ class WindowCaptureBot:
             seconds = int(duration_seconds % 60)
             time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
             
-            self.log_message(f"⏹️ 停止自動化流程（已執行 {self.auto_current_count} 次，運行時間: {time_str}）")
+            self.log_message(self.get_text("log_stop_automation").format(count=self.auto_current_count, time=time_str))
         else:
-            self.log_message(f"⏹️ 停止自動化流程（已執行 {self.auto_current_count} 次）")
+            self.log_message(self.get_text("log_stop_automation_no_time").format(count=self.auto_current_count))
         self.update_statistics_display()
         self.update_auto_count_display()
     
@@ -980,7 +1097,7 @@ class WindowCaptureBot:
             # 確保區域在圖片範圍內
             h, w = image.shape[:2]
             if check_x + 25 > w or check_y + 13 > h or check_x < 0 or check_y < 0:
-                return False, "區域超出範圍"
+                return False, self.get_text("log_region_out_of_range")
             
             # 提取ROI區域
             roi_gray = image[check_y:check_y+20, check_x:check_x+30]
@@ -993,7 +1110,7 @@ class WindowCaptureBot:
                 template_11 = self.loaded_templates[text11_idx]
                 template_01 = self.loaded_templates[text01_idx]
             except (ValueError, IndexError):
-                self.log_message("找不到文字模板索引")
+                self.log_message(self.get_text("log_template_index_error"))
                 return False, "模板索引錯誤"
             
             if template_11 is not None and template_01 is not None:
@@ -1004,7 +1121,7 @@ class WindowCaptureBot:
                 _, max_val_11, _, _ = cv2.minMaxLoc(result_11)
                 _, max_val_01, _, _ = cv2.minMaxLoc(result_01)
                 
-                self.log_message(f"文字模板匹配: 1/1={max_val_11:.3f}, 0/1={max_val_01:.3f}")
+                self.log_message(self.get_text("log_text_template_match").format(val11=max_val_11, val01=max_val_01))
                 
                 threshold = 0.7  # 匹配閾值
                 
@@ -1013,7 +1130,7 @@ class WindowCaptureBot:
                 elif max_val_01 > threshold:
                     return False, "0/1"
                 else:
-                    self.log_message(f"文字模板匹配度過低: 1/1={max_val_11:.3f}, 0/1={max_val_01:.3f}")
+                    self.log_message(self.get_text("log_text_match_low").format(val11=max_val_11, val01=max_val_01))
                     return False, "匹配度不足"
             else:
                 missing = []
@@ -1021,11 +1138,11 @@ class WindowCaptureBot:
                     missing.append("text_11.png")
                 if template_01 is None:
                     missing.append("text_01.png")
-                self.log_message(f"文字模板未載入: {', '.join(missing)}")
+                self.log_message(self.get_text("log_text_template_missing").format(missing=', '.join(missing)))
                 return False, f"模板未載入: {', '.join(missing)}"
                 
         except Exception as e:
-            self.log_message(f"文字模板匹配錯誤: {e}")
+            self.log_message(self.get_text("log_text_template_error").format(error=e))
             return False, "檢查錯誤"
 
     def draw_debug_rectangle(self, image, match_x, match_y, is_clickable):
@@ -1035,12 +1152,12 @@ class WindowCaptureBot:
             check_y = match_y + 22
             
             # 記錄座標信息
-            self.log_message(f"準備畫框: 原始位置({match_x}, {match_y}) -> 檢查位置({check_x}, {check_y})")
+            self.log_message(self.get_text("log_draw_box_prepare").format(x=match_x, y=match_y, check_x=check_x, check_y=check_y))
             
             # 確保座標在圖片範圍內
             h, w = image.shape[:2]
             if check_x < 0 or check_y < 0 or check_x + 20 > w or check_y + 10 > h:
-                self.log_message(f"⚠️ 畫框位置超出圖片範圍! 位置:({check_x},{check_y}) 圖片:{w}x{h}")
+                self.log_message(self.get_text("log_draw_box_out_of_range").format(x=check_x, y=check_y, w=w, h=h))
                 # 即使超出範圍，也畫一個小框標示
                 check_x = max(0, min(check_x, w-21))
                 check_y = max(0, min(check_y, h-11))
@@ -1066,17 +1183,17 @@ class WindowCaptureBot:
             cv2.putText(image, "MATCH", (match_x, match_y - 5), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 2)
             
-            self.log_message(f"✅ 成功畫框: 檢查區域({check_x},{check_y}) 顏色:{color} 狀態:{status_text}")
+            self.log_message(self.get_text("log_draw_box_success").format(x=check_x, y=check_y, color=color, status=status_text))
             return image
             
         except Exception as e:
-            self.log_message(f"畫框錯誤: {e}")
+            self.log_message(self.get_text("log_draw_box_error").format(error=e))
             return image
 
     def test_capture(self):
         """測試捕獲功能 - 加入debug紅框"""
         if not self.target_hwnd:
-            messagebox.showerror("錯誤", "請先選擇目標視窗")
+            messagebox.showerror(self.get_text("error_no_window_selected"), self.get_text("error_no_window_selected"))
             return
         
         self.resize_target_window(self.target_hwnd)
@@ -1099,31 +1216,32 @@ class WindowCaptureBot:
                     
                     if match_loc is not None:
                         match_x, match_y = match_loc
-                        self.log_message(f"測試匹配 {name}: 找到於({match_x}, {match_y}), 信心度: {confidence:.3f}")
+                        self.log_message(self.get_text("log_test_match_found").format(name=name, x=match_x, y=match_y, confidence=confidence))
                         
                         # ✅ 檢查狀態並畫debug框
                         is_clickable, status = self.check_clickable_status(captured_image, match_x, match_y)
                         debug_image = self.draw_debug_rectangle(debug_image, match_x, match_y, is_clickable)
                         
-                        self.log_message(f"狀態檢查: {status} - {'可點擊' if is_clickable else '已購買'}")
+                        self.log_message(self.get_text("log_test_status_clickable" if is_clickable else "log_test_status_not_clickable").format(status=status))
                     else:
-                        self.log_message(f"測試匹配 {name}: 未找到, 最高信心度: {confidence:.3f}")
+                        self.log_message(self.get_text("log_test_match_not_found").format(name=name, confidence=confidence))
             
             # 保存原圖和debug圖
             cv2.imwrite("test_capture.png", captured_image)
             cv2.imwrite("test_capture_debug.png", debug_image)
             
-            self.log_message("測試捕獲成功，圖片保存為 test_capture.png")
-            self.log_message("Debug圖片保存為 test_capture_debug.png (含紅框標記)")
+            self.log_message(self.get_text("log_test_capture_success"))
+            self.log_message(self.get_text("log_test_debug_saved"))
             
             if selected_count == 0:
-                self.log_message("未選擇任何模板進行測試")
+                self.log_message(self.get_text("log_test_no_templates"))
         else:
-            self.log_message("測試捕獲失敗")
+            self.log_message(self.get_text("log_test_capture_failed"))
 
     def save_settings(self):
         """✅ 保存設定（包含統計數據和目標值設定）"""
         settings = {
+            "language": self.current_lang,
             "window": self.window_var.get(),
             "threshold": self.threshold_var.get(),
             "auto_count": self.auto_count_var.get(),
@@ -1136,9 +1254,9 @@ class WindowCaptureBot:
         try:
             with open("settings.json", "w", encoding="utf-8") as f:
                 json.dump(settings, f, ensure_ascii=False, indent=2)
-            self.log_message("設定和統計已保存")
+            self.log_message(self.get_text("log_settings_saved"))
         except Exception as e:
-            self.log_message(f"保存設定時發生錯誤: {e}")
+            self.log_message(self.get_text("log_settings_save_error").format(error=e))
     
     def load_settings(self):
         """✅ 載入設定（包含統計數據和目標值設定）"""
@@ -1151,6 +1269,12 @@ class WindowCaptureBot:
                 self.auto_count_var.set(settings.get("auto_count", ""))
                 self.covenant_target_var.set(settings.get("covenant_target", ""))
                 self.mystic_target_var.set(settings.get("mystic_target", ""))
+                
+                # Load language
+                saved_lang = settings.get("language", "zh-hk")
+                if saved_lang in self.translations:
+                    self.current_lang = saved_lang
+                    self.lang_var.set(saved_lang)
                 
                 # 載入模板選擇狀態（friend.png 默認不勾選）
                 template_selections = settings.get("template_selections", [True, True, False])
@@ -1166,15 +1290,16 @@ class WindowCaptureBot:
                 
                 self.update_statistics_display()
                 self.update_auto_count_display()
-                self.log_message("設定和統計已載入")
+                self.update_ui_texts()  # Update UI after loading language
+                self.log_message(self.get_text("log_settings_loaded"))
         except Exception as e:
-            self.log_message(f"載入設定時發生錯誤: {e}")
+            self.log_message(self.get_text("log_settings_load_error").format(error=e))
     
     def run(self):
         """運行應用程序"""
         self.refresh_windows()
-        self.log_message("🚀E7 PC FULL AUTO v2.6 已啟動", color="green")
-        self.log_message("開始前先確保 Windows顯示設定->縮放與配置->比例 為100%", color="red")
+        self.log_message(self.get_text("log_app_started"), color="green")
+        self.log_message(self.get_text("log_display_scale"), color="red")
         self.root.mainloop()
 
 if __name__ == "__main__":
