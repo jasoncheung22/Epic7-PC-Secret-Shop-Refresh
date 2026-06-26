@@ -1,4 +1,4 @@
-# Epic7 PC版自動刷新神秘商店 v2.7
+# Epic7 PC版自動刷新神秘商店 v2.8
 
 ![Screenshot](screenshot.png)
 
@@ -8,7 +8,8 @@ Demo / User Guide : https://youtu.be/rcPtGO7zkzk
 
 Epic7 自動刷新神秘商店工具，不鎖定滑鼠，Code基本上都是 AI 寫的，如果遇到 bug 請Create Issue。歡迎 fork 或 contribute，Give me a Star if you like it！
 
-### v2.7 新功能
+### v2.8 新功能
+- ✅ **文案與數值修正** - 將「友情書籤」更名為「友情點數」，並修正每次獲取數量為 50
 - ✅ **多語言支援 (i18n)** - 支援中文繁體和英文，可輕鬆添加新語言
 
 ## 使用說明
@@ -58,13 +59,14 @@ Epic7 自動刷新神秘商店工具，不鎖定滑鼠，Code基本上都是 AI 
 2. 執行 `install.bat` 安裝所需函式庫
 3. 執行 `build.bat` 編譯 .exe 檔案
 
-# Epic7 PC Auto Mystic Shop Refresh v2.7
+# Epic7 PC Auto Mystic Shop Refresh v2.8
 
 ## About
 
 Epic7 automatic mystic shop refresh tool that doesn't lock your mouse. The code is basically all written by AI. Feel free to create issues if you encounter any bugs. Welcome to fork the project or contribute - if you like it, give me a star!
 
-### v2.7 New Features
+### v2.8 New Features
+- ✅ **Text and Counter Fixes** - Renamed "Friendship Bookmarks" to "Friendship Points" and fixed the counter increment to 50
 - ✅ **Internationalization (i18n) Support** - Supports Traditional Chinese and English, easy to add new languages
 
 ## Usage Instructions

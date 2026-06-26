@@ -180,7 +180,7 @@
     "log_status_not_clickable": "Status check: {status} - already purchased, skip",
     "log_covenant_found": "Covenant bookmark found!",
     "log_mystic_found": "Mystic bookmark found!",
-    "log_friend_found": "Friendship bookmark found!",
+    "log_friend_found": "Friendship point found!",
     "log_scroll_match_found": "Found matching image {name} at position ({x}, {y}) after scroll",
     "log_scroll_status_clickable": "Status check after scroll: {status} - clickable",
     "log_scroll_status_not_clickable": "Status check after scroll: {status} - already purchased, skip",

@@ -499,14 +499,14 @@ class WindowCaptureBot:
     def write_summary_to_csv(self, duration_seconds):
         """✅ 將自動化總結寫入CSV文件 - 包含機率統計"""
         try:
-            filename = "automation_summary.csv"
+            filename = "automation_summary_v2_8.csv"
             file_exists = os.path.isfile(filename)
             
             # ✅ CSV欄位定義 - 使用固定的欄位名稱（中文），不隨語言改變
             fieldnames = [
                 '開始時間', '結束時間', '使用時間(HH:MM:SS)',
                 '刷新次數', '天空石消耗', '聖約書籤獲得', '神秘書籤獲得',
-                '友情書籤獲得', '金幣消耗', '聖約出現率(%)', '神秘出現率(%)'
+                '友情點數獲得', '金幣消耗', '聖約出現率(%)', '神秘出現率(%)'
             ]
             
             with open(filename, mode='a', newline='', encoding='utf-8-sig') as csvfile:
@@ -540,7 +540,7 @@ class WindowCaptureBot:
                     '天空石消耗': self.stats['skystones_consumed'],
                     '聖約書籤獲得': self.stats['covenant_bookmarks'],
                     '神秘書籤獲得': self.stats['mystic_bookmarks'],
-                    '友情書籤獲得': self.stats['friendship_bookmarks'],
+                    '友情點數獲得': self.stats['friendship_bookmarks'],
                     '金幣消耗': self.stats['gold_consumed'],
                     '聖約出現率(%)': f"{covenant_rate:.2f}",
                     '神秘出現率(%)': f"{mystic_rate:.2f}"
