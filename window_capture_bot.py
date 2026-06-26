@@ -17,7 +17,7 @@ from datetime import datetime
 
 # Version constant for easy updates
 # To update version: Change this constant and rebuild
-VERSION = "2.7"
+VERSION = "2.8"
 
 class WindowCaptureBot:
     def __init__(self):
@@ -55,7 +55,7 @@ class WindowCaptureBot:
             'skystones_consumed': 0,      # 天空石消耗
             'covenant_bookmarks': 0,      # 聖約書簽
             'mystic_bookmarks': 0,        # 神秘書簽
-            'friendship_bookmarks': 0,    # 友情書簽
+            'friendship_bookmarks': 0,    # 友情點數
             'gold_consumed': 0            # 金幣消耗
         }
         
@@ -852,7 +852,7 @@ class WindowCaptureBot:
                                 self.stats['gold_consumed'] += 280000
                                 self.log_message(self.get_text("log_mystic_found"), color="red")
                             elif name == "friend.png":
-                                self.stats['friendship_bookmarks'] += 5
+                                self.stats['friendship_bookmarks'] += 50
                                 self.stats['gold_consumed'] += 18000
                                 self.log_message(self.get_text("log_friend_found"), color="green")
                             
@@ -920,7 +920,7 @@ class WindowCaptureBot:
                                 self.stats['gold_consumed'] += 280000
                                 self.log_message(self.get_text("log_mystic_found"), color="red")
                             elif name == "friend.png":
-                                self.stats['friendship_bookmarks'] += 5
+                                self.stats['friendship_bookmarks'] += 50
                                 self.stats['gold_consumed'] += 18000
                                 self.log_message(self.get_text("log_friend_found"), color="green")
                             
